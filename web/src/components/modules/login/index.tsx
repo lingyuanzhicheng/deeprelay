@@ -13,12 +13,10 @@ import { KeyRound, User } from "lucide-react"
 import {
   Tabs,
   TabsList,
-  TabsHighlight,
-  TabsHighlightItem,
   TabsTrigger,
   TabsContents,
   TabsContent,
-} from "@/components/animate-ui/primitives/animate/tabs"
+} from "@/components/animate-ui/components/animate/tabs"
 
 type LoginMode = 'user' | 'apikey';
 
@@ -77,27 +75,21 @@ export function LoginForm({ onLoginSuccess }: { onLoginSuccess?: () => void }) {
         </header>
 
         <Tabs value={mode} onValueChange={handleModeChange}>
-          <TabsList className="flex p-1 bg-muted rounded-2xl">
-            <TabsHighlight className="rounded-xl bg-background shadow-sm">
-              <TabsHighlightItem value="user" className="flex-1">
-                <TabsTrigger
-                  value="user"
-                  className="w-full flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl text-sm font-medium transition-colors data-[state=active]:text-foreground data-[state=inactive]:text-muted-foreground data-[state=inactive]:hover:text-foreground"
-                >
-                  <User className="w-4 h-4" />
-                  {t('mode.user')}
-                </TabsTrigger>
-              </TabsHighlightItem>
-              <TabsHighlightItem value="apikey" className="flex-1">
-                <TabsTrigger
-                  value="apikey"
-                  className="w-full flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl text-sm font-medium transition-colors data-[state=active]:text-foreground data-[state=inactive]:text-muted-foreground data-[state=inactive]:hover:text-foreground"
-                >
-                  <KeyRound className="w-4 h-4" />
-                  {t('mode.apikey')}
-                </TabsTrigger>
-              </TabsHighlightItem>
-            </TabsHighlight>
+          <TabsList className="w-full">
+            <TabsTrigger
+              value="user"
+              className="flex items-center justify-center gap-2"
+            >
+              <User className="w-4 h-4" />
+              {t('mode.user')}
+            </TabsTrigger>
+            <TabsTrigger
+              value="apikey"
+              className="flex items-center justify-center gap-2"
+            >
+              <KeyRound className="w-4 h-4" />
+              {t('mode.apikey')}
+            </TabsTrigger>
           </TabsList>
 
           <form onSubmit={handleSubmit} className="space-y-6 pt-2">
