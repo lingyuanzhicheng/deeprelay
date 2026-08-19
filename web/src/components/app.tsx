@@ -3,7 +3,8 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from "motion/react"
-import { useAuth } from '@/api/endpoints/user';
+import { LogOut } from 'lucide-react';
+import { useAuth, useAuthStore } from '@/api/endpoints/user';
 import { LoginForm } from '@/components/modules/login';
 import { APIKeyDashboard } from '@/components/modules/apikey-dashboard';
 import { ContentLoader } from '@/route/content-loader';
@@ -11,6 +12,7 @@ import { NavBar, useNavStore } from '@/components/modules/navbar';
 import { useTranslations } from 'next-intl'
 import Logo, { LOGO_DRAW_END_MS } from '@/components/modules/logo';
 import { Toolbar } from '@/components/modules/toolbar';
+import { Button } from '@/components/ui/button';
 import { ENTRANCE_VARIANTS } from '@/lib/animations/fluid-transitions';
 import { useQueryClient } from '@tanstack/react-query';
 import { CONTENT_MAP } from '@/route';
@@ -23,8 +25,10 @@ function timeout(ms: number) {
 
 export function AppContainer() {
     const { isAuthenticated, isAPIKeyAuth, isLoading: authLoading } = useAuth();
+    const { logout } = useAuthStore();
     const { activeItem, direction } = useNavStore();
     const t = useTranslations('navbar');
+    const tDashboard = useTranslations('apiKeyDashboard');
     const queryClient = useQueryClient();
 
     // Logo 动画完成状态
@@ -245,8 +249,11 @@ export function AppContainer() {
                             </motion.div>
                         </AnimatePresence>
                     </div>
-                    <div className="ml-auto">
+                    <div className="ml-auto flex items-center gap-2">
                         <Toolbar />
+                        <Button variant="ghost" size="icon" onClick={logout} aria-label={tDashboard('logout')} className="rounded-xl hover:bg-destructive/10 hover:text-destructive">
+                            <LogOut className="size-4" />
+                        </Button>
                     </div>
                 </header>
                 <AnimatePresence mode="wait" initial={false}>
