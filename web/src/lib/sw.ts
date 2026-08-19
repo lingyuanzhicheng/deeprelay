@@ -7,16 +7,16 @@ export const SW_MESSAGE_TYPE = {
 export type SwMessageType = (typeof SW_MESSAGE_TYPE)[keyof typeof SW_MESSAGE_TYPE];
 
 // Keep in sync with `web/public/sw.js`
-export const OCTOPUS_CACHE_PREFIX = 'octopus-';
+export const DEEPRELAY_CACHE_PREFIX = 'deeprelay-';
 // Font cache is version-independent and should persist across updates
-export const OCTOPUS_FONT_CACHE_NAME = 'octopus-font';
+export const DEEPRELAY_FONT_CACHE_NAME = 'deeprelay-font';
 
-export function isOctopusCacheName(name: string) {
-    return name.startsWith(OCTOPUS_CACHE_PREFIX);
+export function isDeepRelayCacheName(name: string) {
+    return name.startsWith(DEEPRELAY_CACHE_PREFIX);
 }
 
 export function isFontCacheName(name: string) {
-    return name === OCTOPUS_FONT_CACHE_NAME;
+    return name === DEEPRELAY_FONT_CACHE_NAME;
 }
 
 

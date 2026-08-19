@@ -3,9 +3,9 @@ package helper
 import (
 	"context"
 
-	"github.com/bestruirui/octopus/internal/model"
-	"github.com/bestruirui/octopus/internal/op"
-	"github.com/bestruirui/octopus/internal/price"
+	"github.com/lingyuanzhicheng/deeprelay/internal/model"
+	"github.com/lingyuanzhicheng/deeprelay/internal/op"
+	"github.com/lingyuanzhicheng/deeprelay/internal/price"
 )
 
 func LLMPriceAddToDB(modelNames []string, ctx context.Context) error {

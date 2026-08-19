@@ -4,14 +4,14 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/bestruirui/octopus/internal/conf"
-	"github.com/bestruirui/octopus/internal/relay/bodycache"
-	_ "github.com/bestruirui/octopus/internal/server/handlers"
-	"github.com/bestruirui/octopus/internal/server/middleware"
-	"github.com/bestruirui/octopus/internal/server/resp"
-	"github.com/bestruirui/octopus/internal/server/router"
-	"github.com/bestruirui/octopus/internal/utils/log"
-	"github.com/bestruirui/octopus/static"
+	"github.com/lingyuanzhicheng/deeprelay/internal/conf"
+	"github.com/lingyuanzhicheng/deeprelay/internal/relay/bodycache"
+	_ "github.com/lingyuanzhicheng/deeprelay/internal/server/handlers"
+	"github.com/lingyuanzhicheng/deeprelay/internal/server/middleware"
+	"github.com/lingyuanzhicheng/deeprelay/internal/server/resp"
+	"github.com/lingyuanzhicheng/deeprelay/internal/server/router"
+	"github.com/lingyuanzhicheng/deeprelay/internal/utils/log"
+	"github.com/lingyuanzhicheng/deeprelay/static"
 	"github.com/gin-gonic/gin"
 )
 

@@ -7,13 +7,13 @@ import (
 	"strings"
 	"time"
 
-	"github.com/bestruirui/octopus/internal/helper"
-	"github.com/bestruirui/octopus/internal/model"
-	"github.com/bestruirui/octopus/internal/op"
-	"github.com/bestruirui/octopus/internal/server/middleware"
-	"github.com/bestruirui/octopus/internal/server/resp"
-	"github.com/bestruirui/octopus/internal/server/router"
-	"github.com/bestruirui/octopus/internal/task"
+	"github.com/lingyuanzhicheng/deeprelay/internal/helper"
+	"github.com/lingyuanzhicheng/deeprelay/internal/model"
+	"github.com/lingyuanzhicheng/deeprelay/internal/op"
+	"github.com/lingyuanzhicheng/deeprelay/internal/server/middleware"
+	"github.com/lingyuanzhicheng/deeprelay/internal/server/resp"
+	"github.com/lingyuanzhicheng/deeprelay/internal/server/router"
+	"github.com/lingyuanzhicheng/deeprelay/internal/task"
 	"github.com/gin-gonic/gin"
 )
 

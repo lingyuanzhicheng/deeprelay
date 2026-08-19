@@ -8,12 +8,12 @@ import (
 	"strings"
 	"time"
 
-	"github.com/bestruirui/octopus/internal/model"
-	"github.com/bestruirui/octopus/internal/op"
-	"github.com/bestruirui/octopus/internal/server/middleware"
-	"github.com/bestruirui/octopus/internal/server/resp"
-	"github.com/bestruirui/octopus/internal/server/router"
-	"github.com/bestruirui/octopus/internal/task"
+	"github.com/lingyuanzhicheng/deeprelay/internal/model"
+	"github.com/lingyuanzhicheng/deeprelay/internal/op"
+	"github.com/lingyuanzhicheng/deeprelay/internal/server/middleware"
+	"github.com/lingyuanzhicheng/deeprelay/internal/server/resp"
+	"github.com/lingyuanzhicheng/deeprelay/internal/server/router"
+	"github.com/lingyuanzhicheng/deeprelay/internal/task"
 	"github.com/gin-gonic/gin"
 )
 
@@ -92,7 +92,7 @@ func exportDB(c *gin.Context) {
 	}
 
 	c.Header("Content-Type", "application/json")
-	c.Header("Content-Disposition", "attachment; filename=\"octopus-export-"+time.Now().Format("20060102150405")+".json\"")
+	c.Header("Content-Disposition", "attachment; filename=\"deeprelay-export-"+time.Now().Format("20060102150405")+".json\"")
 	c.JSON(http.StatusOK, dump)
 }
 

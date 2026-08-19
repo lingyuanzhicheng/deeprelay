@@ -5,12 +5,12 @@ import (
 	"strings"
 	"time"
 
-	"github.com/bestruirui/octopus/internal/helper"
-	"github.com/bestruirui/octopus/internal/model"
-	"github.com/bestruirui/octopus/internal/op"
-	"github.com/bestruirui/octopus/internal/utils/diff"
-	"github.com/bestruirui/octopus/internal/utils/log"
-	"github.com/bestruirui/octopus/internal/utils/xstrings"
+	"github.com/lingyuanzhicheng/deeprelay/internal/helper"
+	"github.com/lingyuanzhicheng/deeprelay/internal/model"
+	"github.com/lingyuanzhicheng/deeprelay/internal/op"
+	"github.com/lingyuanzhicheng/deeprelay/internal/utils/diff"
+	"github.com/lingyuanzhicheng/deeprelay/internal/utils/log"
+	"github.com/lingyuanzhicheng/deeprelay/internal/utils/xstrings"
 )
 
 var lastSyncModelsTime = time.Now()

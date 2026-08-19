@@ -11,8 +11,8 @@ import (
 	"reflect"
 	"strings"
 
-	"github.com/bestruirui/octopus/internal/transformer/model"
-	"github.com/bestruirui/octopus/internal/utils/xurl"
+	"github.com/lingyuanzhicheng/deeprelay/internal/transformer/model"
+	"github.com/lingyuanzhicheng/deeprelay/internal/utils/xurl"
 	"github.com/samber/lo"
 )
 

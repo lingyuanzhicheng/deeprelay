@@ -1,4 +1,4 @@
-module github.com/bestruirui/octopus
+module github.com/lingyuanzhicheng/deeprelay
 
 go 1.24.4
 

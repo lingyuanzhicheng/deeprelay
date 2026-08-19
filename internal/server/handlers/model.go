@@ -4,12 +4,12 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/bestruirui/octopus/internal/model"
-	"github.com/bestruirui/octopus/internal/op"
-	"github.com/bestruirui/octopus/internal/price"
-	"github.com/bestruirui/octopus/internal/server/middleware"
-	"github.com/bestruirui/octopus/internal/server/resp"
-	"github.com/bestruirui/octopus/internal/server/router"
+	"github.com/lingyuanzhicheng/deeprelay/internal/model"
+	"github.com/lingyuanzhicheng/deeprelay/internal/op"
+	"github.com/lingyuanzhicheng/deeprelay/internal/price"
+	"github.com/lingyuanzhicheng/deeprelay/internal/server/middleware"
+	"github.com/lingyuanzhicheng/deeprelay/internal/server/resp"
+	"github.com/lingyuanzhicheng/deeprelay/internal/server/router"
 	"github.com/gin-gonic/gin"
 	"github.com/samber/lo"
 )
@@ -101,7 +101,7 @@ func getModelList(c *gin.Context) {
 				ID:      m,
 				Object:  "model",
 				Created: 1763395200,
-				OwnedBy: "octopus",
+				OwnedBy: "deeprelay",
 			})
 		}
 		c.JSON(200, gin.H{

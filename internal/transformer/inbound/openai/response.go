@@ -8,8 +8,8 @@ import (
 
 	"github.com/samber/lo"
 
-	"github.com/bestruirui/octopus/internal/transformer/model"
-	"github.com/bestruirui/octopus/internal/utils/xurl"
+	"github.com/lingyuanzhicheng/deeprelay/internal/transformer/model"
+	"github.com/lingyuanzhicheng/deeprelay/internal/utils/xurl"
 )
 
 // ResponseInbound implements the Inbound interface for OpenAI Responses API.

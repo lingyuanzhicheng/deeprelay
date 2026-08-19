@@ -1,8 +1,8 @@
 <div align="center">
 
-<img src="web/public/logo.svg" alt="Octopus Logo" width="120" height="120">
+<img src="web/public/logo.svg" alt="DeepRelay Logo" width="120" height="120">
 
-### Octopus
+### DeepRelay
 
 **为个人打造的简单、美观、优雅的 LLM API 聚合与负载均衡服务**
 
@@ -32,23 +32,23 @@
 直接运行
 
 ```bash
-docker run -d --name octopus -v /path/to/data:/app/data -p 8080:8080 bestrui/octopus
+docker run -d --name deeprelay -v /path/to/data:/app/data -p 8080:8080 lingyuanzhicheng/deeprelay
 ```
 
 或者使用 docker compose 运行
 
 ```bash
-wget https://raw.githubusercontent.com/bestruirui/octopus/refs/heads/dev/docker-compose.yml
+wget https://raw.githubusercontent.com/lingyuanzhicheng/deeprelay/refs/heads/dev/docker-compose.yml
 docker compose up -d
 ```
 
 
 ### 📦 从 Release 下载
 
-从 [Releases](https://github.com/bestruirui/octopus/releases) 下载对应平台的二进制文件，然后运行：
+从 [Releases](https://github.com/lingyuanzhicheng/deeprelay/releases) 下载对应平台的二进制文件，然后运行：
 
 ```bash
-./octopus start
+./deeprelay start
 ```
 
 ### 🛠️ 源码运行
@@ -60,8 +60,8 @@ docker compose up -d
 
 ```bash
 # 克隆项目
-git clone https://github.com/bestruirui/octopus.git
-cd octopus
+git clone https://github.com/lingyuanzhicheng/deeprelay.git
+cd deeprelay
 # 构建前端
 cd web && pnpm install && pnpm run build && cd ..
 # 移动前端产物到 static 目录
@@ -139,7 +139,7 @@ http://localhost:3000
 {
   "database": {
     "type": "mysql",
-    "path": "root:password@tcp(127.0.0.1:3306)/octopus"
+    "path": "root:password@tcp(127.0.0.1:3306)/deeprelay"
   }
 }
 ```
@@ -150,7 +150,7 @@ http://localhost:3000
 {
   "database": {
     "type": "postgres",
-    "path": "postgresql://user:password@localhost:5432/octopus?sslmode=disable"
+    "path": "postgresql://user:password@localhost:5432/deeprelay?sslmode=disable"
   }
 }
 ```
@@ -159,21 +159,21 @@ http://localhost:3000
 
 **环境变量：**
 
-所有配置项均可通过环境变量覆盖，格式为 `OCTOPUS_` + 配置路径（用 `_` 连接）：
+所有配置项均可通过环境变量覆盖，格式为 `DEEPRELAY_` + 配置路径（用 `_` 连接）：
 
 | 环境变量 | 对应配置项 |
 |----------|-----------|
-| `OCTOPUS_SERVER_PORT` | `server.port` |
-| `OCTOPUS_SERVER_HOST` | `server.host` |
-| `OCTOPUS_DATABASE_TYPE` | `database.type` |
-| `OCTOPUS_DATABASE_PATH` | `database.path` |
-| `OCTOPUS_LOG_LEVEL` | `log.level` |
-| `OCTOPUS_GITHUB_PAT` | 用于获取最新版本时的速率限制(可选) |
-| `OCTOPUS_RELAY_MAX_SSE_EVENT_SIZE` | 最大 SSE 事件大小(可选) |
-| `OCTOPUS_IMAGES_BODY_MEMORY_THRESHOLD_MB` | Images 请求体内存缓存阈值，超过阈值会落盘临时文件(可选，默认 16) |
-| `OCTOPUS_IMAGES_BODY_MAX_MB` | Images 请求体最大大小限制，超过限制将拒绝请求(可选，默认 256) |
-| `OCTOPUS_IMAGES_BODY_TMP_DIR` | Images 请求体临时文件目录(可选，默认 `./cache`) |
-| `OCTOPUS_IMAGES_BODY_TMP_CLEANUP_HOURS` | 启动时清理临时文件的时间阈值(可选，默认 24) |
+| `DEEPRELAY_SERVER_PORT` | `server.port` |
+| `DEEPRELAY_SERVER_HOST` | `server.host` |
+| `DEEPRELAY_DATABASE_TYPE` | `database.type` |
+| `DEEPRELAY_DATABASE_PATH` | `database.path` |
+| `DEEPRELAY_LOG_LEVEL` | `log.level` |
+| `DEEPRELAY_GITHUB_PAT` | 用于获取最新版本时的速率限制(可选) |
+| `DEEPRELAY_RELAY_MAX_SSE_EVENT_SIZE` | 最大 SSE 事件大小(可选) |
+| `DEEPRELAY_IMAGES_BODY_MEMORY_THRESHOLD_MB` | Images 请求体内存缓存阈值，超过阈值会落盘临时文件(可选，默认 16) |
+| `DEEPRELAY_IMAGES_BODY_MAX_MB` | Images 请求体最大大小限制，超过限制将拒绝请求(可选，默认 256) |
+| `DEEPRELAY_IMAGES_BODY_TMP_DIR` | Images 请求体临时文件目录(可选，默认 `./cache`) |
+| `DEEPRELAY_IMAGES_BODY_TMP_CLEANUP_HOURS` | 启动时清理临时文件的时间阈值(可选，默认 24) |
 
 
 ## 📸 界面预览
@@ -320,10 +320,10 @@ import os
 
 client = OpenAI(   
     base_url="http://127.0.0.1:8080/v1",   
-    api_key="sk-octopus-P48ROljwJmWBYVARjwQM8Nkiezlg7WOrXXOWDYY8TI5p9Mzg", 
+    api_key="sk-deeprelay-P48ROljwJmWBYVARjwQM8Nkiezlg7WOrXXOWDYY8TI5p9Mzg", 
 )
 completion = client.chat.completions.create(
-    model="octopus-openai",  // 填写正确的分组名称
+    model="deeprelay-openai",  // 填写正确的分组名称
     messages = [
         {"role": "user", "content": "Hello"},
     ],
@@ -339,14 +339,14 @@ print(completion.choices[0].message.content)
 {
   "env": {
     "ANTHROPIC_BASE_URL": "http://127.0.0.1:8080",
-    "ANTHROPIC_AUTH_TOKEN": "sk-octopus-P48ROljwJmWBYVARjwQM8Nkiezlg7WOrXXOWDYY8TI5p9Mzg",
+    "ANTHROPIC_AUTH_TOKEN": "sk-deeprelay-P48ROljwJmWBYVARjwQM8Nkiezlg7WOrXXOWDYY8TI5p9Mzg",
     "API_TIMEOUT_MS": "3000000",
     "CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC": "1",
-    "ANTHROPIC_MODEL": "octopus-sonnet-4-5",
-    "ANTHROPIC_SMALL_FAST_MODEL": "octopus-haiku-4-5",
-    "ANTHROPIC_DEFAULT_SONNET_MODEL": "octopus-sonnet-4-5",
-    "ANTHROPIC_DEFAULT_OPUS_MODEL": "octopus-sonnet-4-5",
-    "ANTHROPIC_DEFAULT_HAIKU_MODEL": "octopus-haiku-4-5"
+    "ANTHROPIC_MODEL": "deeprelay-sonnet-4-5",
+    "ANTHROPIC_SMALL_FAST_MODEL": "deeprelay-haiku-4-5",
+    "ANTHROPIC_DEFAULT_SONNET_MODEL": "deeprelay-sonnet-4-5",
+    "ANTHROPIC_DEFAULT_OPUS_MODEL": "deeprelay-sonnet-4-5",
+    "ANTHROPIC_DEFAULT_HAIKU_MODEL": "deeprelay-haiku-4-5"
   }
 }
 ```
@@ -356,19 +356,19 @@ print(completion.choices[0].message.content)
 编辑 `~/.codex/config.toml`
 
 ```toml
-model = "octopus-codex" # 填写正确的分组名称
+model = "deeprelay-codex" # 填写正确的分组名称
 
-model_provider = "octopus"
+model_provider = "deeprelay"
 
-[model_providers.octopus]
-name = "octopus"
+[model_providers.deeprelay]
+name = "deeprelay"
 base_url = "http://127.0.0.1:8080/v1"
 ```
 编辑 `~/.codex/auth.json`
 
 ```json
 {
-  "OPENAI_API_KEY": "sk-octopus-P48ROljwJmWBYVARjwQM8Nkiezlg7WOrXXOWDYY8TI5p9Mzg"
+  "OPENAI_API_KEY": "sk-deeprelay-P48ROljwJmWBYVARjwQM8Nkiezlg7WOrXXOWDYY8TI5p9Mzg"
 }
 ```
 
@@ -379,4 +379,4 @@ base_url = "http://127.0.0.1:8080/v1"
 
 - 🙏 [looplj/axonhub](https://github.com/looplj/axonhub) - 本项目的 LLM API 适配模块直接源自该仓库的实现
 - 📊 [sst/models.dev](https://github.com/sst/models.dev) - AI 模型数据库，提供模型价格数据
-- 🇨🇳 [AtomGit](https://atomgit.com/bestruirui/octopus) - 国内代码托管
+- 🇨🇳 [AtomGit](https://atomgit.com/lingyuanzhicheng/deeprelay) - 国内代码托管

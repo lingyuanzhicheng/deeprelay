@@ -1,8 +1,8 @@
 <div align="center">
 
-<img src="web/public/logo.svg" alt="Octopus Logo" width="120" height="120">
+<img src="web/public/logo.svg" alt="DeepRelay Logo" width="120" height="120">
 
-### Octopus
+### DeepRelay
 
 **A Simple, Beautiful, and Elegant LLM API Aggregation & Load Balancing Service for Individuals**
 
@@ -32,23 +32,23 @@
 Run directly:
 
 ```bash
-docker run -d --name octopus -v /path/to/data:/app/data -p 8080:8080 bestrui/octopus
+docker run -d --name deeprelay -v /path/to/data:/app/data -p 8080:8080 lingyuanzhicheng/deeprelay
 ```
 
 Or use docker compose:
 
 ```bash
-wget https://raw.githubusercontent.com/bestruirui/octopus/refs/heads/dev/docker-compose.yml
+wget https://raw.githubusercontent.com/lingyuanzhicheng/deeprelay/refs/heads/dev/docker-compose.yml
 docker compose up -d
 ```
 
 
 ### 📦 Download from Release
 
-Download the binary for your platform from [Releases](https://github.com/bestruirui/octopus/releases), then run:
+Download the binary for your platform from [Releases](https://github.com/lingyuanzhicheng/deeprelay/releases), then run:
 
 ```bash
-./octopus start
+./deeprelay start
 ```
 
 ### 🛠️ Build from Source
@@ -60,8 +60,8 @@ Download the binary for your platform from [Releases](https://github.com/bestrui
 
 ```bash
 # Clone the repository
-git clone https://github.com/bestruirui/octopus.git
-cd octopus
+git clone https://github.com/lingyuanzhicheng/deeprelay.git
+cd deeprelay
 # Build frontend
 cd web && pnpm install && pnpm run build && cd ..
 # Move frontend assets to static directory
@@ -139,7 +139,7 @@ Three database types are supported:
 {
   "database": {
     "type": "mysql",
-    "path": "root:password@tcp(127.0.0.1:3306)/octopus"
+    "path": "root:password@tcp(127.0.0.1:3306)/deeprelay"
   }
 }
 ```
@@ -150,7 +150,7 @@ Three database types are supported:
 {
   "database": {
     "type": "postgres",
-    "path": "postgresql://user:password@localhost:5432/octopus?sslmode=disable"
+    "path": "postgresql://user:password@localhost:5432/deeprelay?sslmode=disable"
   }
 }
 ```
@@ -159,21 +159,21 @@ Three database types are supported:
 
 ### 🌐 Environment Variables
 
-All configuration options can be overridden via environment variables using the format `OCTOPUS_` + configuration path (joined with `_`):
+All configuration options can be overridden via environment variables using the format `DEEPRELAY_` + configuration path (joined with `_`):
 
 | Environment Variable | Configuration Option |
 |---------------------|---------------------|
-| `OCTOPUS_SERVER_PORT` | `server.port` |
-| `OCTOPUS_SERVER_HOST` | `server.host` |
-| `OCTOPUS_DATABASE_TYPE` | `database.type` |
-| `OCTOPUS_DATABASE_PATH` | `database.path` |
-| `OCTOPUS_LOG_LEVEL` | `log.level` |
-| `OCTOPUS_GITHUB_PAT` | For rate limiting when getting the latest version (optional) |
-| `OCTOPUS_RELAY_MAX_SSE_EVENT_SIZE` | Maximum SSE event size (optional) |
-| `OCTOPUS_IMAGES_BODY_MEMORY_THRESHOLD_MB` | Images request body in-memory threshold. If exceeded, it will be spooled to a temporary file (optional, default 16) |
-| `OCTOPUS_IMAGES_BODY_MAX_MB` | Images request body maximum size. Requests above this limit are rejected (optional, default 256) |
-| `OCTOPUS_IMAGES_BODY_TMP_DIR` | Images request body temporary directory (optional, default `./cache`) |
-| `OCTOPUS_IMAGES_BODY_TMP_CLEANUP_HOURS` | Startup cleanup threshold for temporary files (optional, default 24) |
+| `DEEPRELAY_SERVER_PORT` | `server.port` |
+| `DEEPRELAY_SERVER_HOST` | `server.host` |
+| `DEEPRELAY_DATABASE_TYPE` | `database.type` |
+| `DEEPRELAY_DATABASE_PATH` | `database.path` |
+| `DEEPRELAY_LOG_LEVEL` | `log.level` |
+| `DEEPRELAY_GITHUB_PAT` | For rate limiting when getting the latest version (optional) |
+| `DEEPRELAY_RELAY_MAX_SSE_EVENT_SIZE` | Maximum SSE event size (optional) |
+| `DEEPRELAY_IMAGES_BODY_MEMORY_THRESHOLD_MB` | Images request body in-memory threshold. If exceeded, it will be spooled to a temporary file (optional, default 16) |
+| `DEEPRELAY_IMAGES_BODY_MAX_MB` | Images request body maximum size. Requests above this limit are rejected (optional, default 256) |
+| `DEEPRELAY_IMAGES_BODY_TMP_DIR` | Images request body temporary directory (optional, default `./cache`) |
+| `DEEPRELAY_IMAGES_BODY_TMP_CLEANUP_HOURS` | Startup cleanup threshold for temporary files (optional, default 24) |
 
 ## 📸 Screenshots
 
@@ -318,10 +318,10 @@ import os
 
 client = OpenAI(   
     base_url="http://127.0.0.1:8080/v1",   
-    api_key="sk-octopus-P48ROljwJmWBYVARjwQM8Nkiezlg7WOrXXOWDYY8TI5p9Mzg", 
+    api_key="sk-deeprelay-P48ROljwJmWBYVARjwQM8Nkiezlg7WOrXXOWDYY8TI5p9Mzg", 
 )
 completion = client.chat.completions.create(
-    model="octopus-openai",  # Use the correct group name
+    model="deeprelay-openai",  # Use the correct group name
     messages = [
         {"role": "user", "content": "Hello"},
     ],
@@ -337,14 +337,14 @@ Edit `~/.claude/settings.json`
 {
   "env": {
     "ANTHROPIC_BASE_URL": "http://127.0.0.1:8080",
-    "ANTHROPIC_AUTH_TOKEN": "sk-octopus-P48ROljwJmWBYVARjwQM8Nkiezlg7WOrXXOWDYY8TI5p9Mzg",
+    "ANTHROPIC_AUTH_TOKEN": "sk-deeprelay-P48ROljwJmWBYVARjwQM8Nkiezlg7WOrXXOWDYY8TI5p9Mzg",
     "API_TIMEOUT_MS": "3000000",
     "CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC": "1",
-    "ANTHROPIC_MODEL": "octopus-sonnet-4-5",
-    "ANTHROPIC_SMALL_FAST_MODEL": "octopus-haiku-4-5",
-    "ANTHROPIC_DEFAULT_SONNET_MODEL": "octopus-sonnet-4-5",
-    "ANTHROPIC_DEFAULT_OPUS_MODEL": "octopus-sonnet-4-5",
-    "ANTHROPIC_DEFAULT_HAIKU_MODEL": "octopus-haiku-4-5"
+    "ANTHROPIC_MODEL": "deeprelay-sonnet-4-5",
+    "ANTHROPIC_SMALL_FAST_MODEL": "deeprelay-haiku-4-5",
+    "ANTHROPIC_DEFAULT_SONNET_MODEL": "deeprelay-sonnet-4-5",
+    "ANTHROPIC_DEFAULT_OPUS_MODEL": "deeprelay-sonnet-4-5",
+    "ANTHROPIC_DEFAULT_HAIKU_MODEL": "deeprelay-haiku-4-5"
   }
 }
 ```
@@ -354,12 +354,12 @@ Edit `~/.claude/settings.json`
 Edit `~/.codex/config.toml`
 
 ```toml
-model = "octopus-codex" # Use the correct group name
+model = "deeprelay-codex" # Use the correct group name
 
-model_provider = "octopus"
+model_provider = "deeprelay"
 
-[model_providers.octopus]
-name = "octopus"
+[model_providers.deeprelay]
+name = "deeprelay"
 base_url = "http://127.0.0.1:8080/v1"
 ```
 
@@ -367,7 +367,7 @@ Edit `~/.codex/auth.json`
 
 ```json
 {
-  "OPENAI_API_KEY": "sk-octopus-P48ROljwJmWBYVARjwQM8Nkiezlg7WOrXXOWDYY8TI5p9Mzg"
+  "OPENAI_API_KEY": "sk-deeprelay-P48ROljwJmWBYVARjwQM8Nkiezlg7WOrXXOWDYY8TI5p9Mzg"
 }
 ```
 
@@ -377,4 +377,4 @@ Edit `~/.codex/auth.json`
 
 - 🙏 [looplj/axonhub](https://github.com/looplj/axonhub) - The LLM API adaptation module in this project is directly derived from this repository
 - 📊 [sst/models.dev](https://github.com/sst/models.dev) - AI model database providing model pricing data
-- 🇨🇳 [AtomGit](https://atomgit.com/bestruirui/octopus) - China-based code hosting
+- 🇨🇳 [AtomGit](https://atomgit.com/lingyuanzhicheng/deeprelay) - China-based code hosting

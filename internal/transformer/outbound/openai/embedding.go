@@ -11,7 +11,7 @@ import (
 	"net/url"
 	"strings"
 
-	"github.com/bestruirui/octopus/internal/transformer/model"
+	"github.com/lingyuanzhicheng/deeprelay/internal/transformer/model"
 )
 
 type EmbeddingOutbound struct{}

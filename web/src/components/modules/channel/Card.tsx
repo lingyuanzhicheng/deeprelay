@@ -94,7 +94,7 @@ export function Card({ channel, stats, layout = 'grid' }: { channel: Channel; st
                             </div>
                             <div className="rounded-2xl border border-border/70 bg-background/80 p-2">
                                 <dt className="mb-1 flex items-center gap-1 text-xs text-muted-foreground">
-                                    <CheckCircle2 className="size-3.5 text-emerald-500" />
+                                    <CheckCircle2 className="size-3.5 text-blue-500" />
                                     {tMetrics('successRequests')}
                                 </dt>
                                 <dd className="text-sm font-semibold">{stats.request_success.formatted.value}</dd>

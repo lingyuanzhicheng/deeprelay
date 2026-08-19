@@ -13,14 +13,14 @@ import (
 	"strings"
 	"time"
 
-	"github.com/bestruirui/octopus/internal/client"
-	"github.com/bestruirui/octopus/internal/conf"
-	"github.com/bestruirui/octopus/internal/utils/log"
+	"github.com/lingyuanzhicheng/deeprelay/internal/client"
+	"github.com/lingyuanzhicheng/deeprelay/internal/conf"
+	"github.com/lingyuanzhicheng/deeprelay/internal/utils/log"
 )
 
 const (
-	updateUrl    = "https://github.com/bestruirui/octopus/releases/latest/download"
-	updateApiUrl = "https://api.github.com/repos/bestruirui/octopus/releases/latest"
+	updateUrl    = "https://github.com/lingyuanzhicheng/deeprelay/releases/latest/download"
+	updateApiUrl = "https://api.github.com/repos/lingyuanzhicheng/deeprelay/releases/latest"
 )
 
 type LatestInfo struct {

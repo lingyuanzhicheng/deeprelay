@@ -8,11 +8,11 @@ import (
 	"strings"
 	"time"
 
-	"github.com/bestruirui/octopus/internal/model"
-	"github.com/bestruirui/octopus/internal/op"
-	"github.com/bestruirui/octopus/internal/price"
-	transformerModel "github.com/bestruirui/octopus/internal/transformer/model"
-	"github.com/bestruirui/octopus/internal/utils/log"
+	"github.com/lingyuanzhicheng/deeprelay/internal/model"
+	"github.com/lingyuanzhicheng/deeprelay/internal/op"
+	"github.com/lingyuanzhicheng/deeprelay/internal/price"
+	transformerModel "github.com/lingyuanzhicheng/deeprelay/internal/transformer/model"
+	"github.com/lingyuanzhicheng/deeprelay/internal/utils/log"
 )
 
 // RelayMetrics 负责最终的日志收集与持久化

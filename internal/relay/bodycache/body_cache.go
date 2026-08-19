@@ -24,14 +24,14 @@ const (
 	DefaultTmpCleanupHours = 24
 
 	// 临时文件名前缀：用于清理
-	TmpFilePrefix = "octopus-images-"
+	TmpFilePrefix = "deeprelay-images-"
 )
 
 const (
-	envBodyMaxMB             = "OCTOPUS_IMAGES_BODY_MAX_MB"
-	envMemoryThresholdMB     = "OCTOPUS_IMAGES_BODY_MEMORY_THRESHOLD_MB"
-	envTmpDir                = "OCTOPUS_IMAGES_BODY_TMP_DIR"
-	envTmpCleanupHours       = "OCTOPUS_IMAGES_BODY_TMP_CLEANUP_HOURS"
+	envBodyMaxMB             = "DEEPRELAY_IMAGES_BODY_MAX_MB"
+	envMemoryThresholdMB     = "DEEPRELAY_IMAGES_BODY_MEMORY_THRESHOLD_MB"
+	envTmpDir                = "DEEPRELAY_IMAGES_BODY_TMP_DIR"
+	envTmpCleanupHours       = "DEEPRELAY_IMAGES_BODY_TMP_CLEANUP_HOURS"
 	bytesPerMB         int64 = 1024 * 1024
 )
 
@@ -62,9 +62,9 @@ type BodyCache struct {
 }
 
 // New 从 r 读取完整 body 并缓存（内存或临时文件）。
-// - 最大限制默认 256MB，可由环境变量 OCTOPUS_IMAGES_BODY_MAX_MB 覆盖
-// - 内存阈值默认 16MB，可由环境变量 OCTOPUS_IMAGES_BODY_MEMORY_THRESHOLD_MB 覆盖
-// - 临时目录默认 ./cache，可由环境变量 OCTOPUS_IMAGES_BODY_TMP_DIR 覆盖
+// - 最大限制默认 256MB，可由环境变量 DEEPRELAY_IMAGES_BODY_MAX_MB 覆盖
+// - 内存阈值默认 16MB，可由环境变量 DEEPRELAY_IMAGES_BODY_MEMORY_THRESHOLD_MB 覆盖
+// - 临时目录默认 ./cache，可由环境变量 DEEPRELAY_IMAGES_BODY_TMP_DIR 覆盖
 func New(r io.ReadCloser) (*BodyCache, error) {
 	if r == nil {
 		return nil, errors.New("nil body reader")

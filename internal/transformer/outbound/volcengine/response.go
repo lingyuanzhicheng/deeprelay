@@ -9,8 +9,8 @@ import (
 	"net/url"
 	"strings"
 
-	"github.com/bestruirui/octopus/internal/transformer/model"
-	"github.com/bestruirui/octopus/internal/transformer/outbound/openai"
+	"github.com/lingyuanzhicheng/deeprelay/internal/transformer/model"
+	"github.com/lingyuanzhicheng/deeprelay/internal/transformer/outbound/openai"
 )
 
 var supportedReasoningEffortModel = map[string]bool{

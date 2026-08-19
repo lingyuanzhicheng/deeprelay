@@ -5,7 +5,7 @@ import (
 	"os"
 	"runtime"
 
-	"github.com/bestruirui/octopus/internal/conf"
+	"github.com/lingyuanzhicheng/deeprelay/internal/conf"
 
 	"github.com/spf13/cobra"
 )

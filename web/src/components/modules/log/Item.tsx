@@ -257,7 +257,7 @@ export function LogCard({ log }: { log: RelayLog }) {
                                     <span>{t('totalTime')} {formatDuration(log.use_time)}</span>
                                 </div>
                                 <div className="flex items-center gap-1.5">
-                                    <ArrowDownToLine className="size-3.5 shrink-0 text-green-500" />
+                                    <ArrowDownToLine className="size-3.5 shrink-0 text-blue-500" />
                                     <span>{t('input')} {log.input_tokens.toLocaleString()}</span>
                                 </div>
                                 <div className="flex items-center gap-1.5">
@@ -265,8 +265,8 @@ export function LogCard({ log }: { log: RelayLog }) {
                                     <span>{t('output')} {log.output_tokens.toLocaleString()}</span>
                                 </div>
                                 <div className="flex items-center gap-1.5">
-                                    <DollarSign className="size-3.5 shrink-0 text-emerald-500" />
-                                    <span className="font-medium text-emerald-600 dark:text-emerald-400">
+                                    <DollarSign className="size-3.5 shrink-0 text-blue-500" />
+                                    <span className="font-medium text-blue-600 dark:text-blue-400">
                                         {t('cost')} {Number(log.cost).toFixed(6)}
                                     </span>
                                 </div>
@@ -425,7 +425,7 @@ export function LogCard({ log }: { log: RelayLog }) {
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4 h-full min-h-0">
                                         <div className="flex flex-col rounded-2xl border border-border bg-muted/30 overflow-hidden min-h-0">
                                             <div className="flex items-center gap-2 px-3 md:px-4 py-2.5 md:py-3 border-b border-border bg-muted/50 shrink-0">
-                                                <Send className="size-4 text-green-500" />
+                                                <Send className="size-4 text-blue-500" />
                                                 <span className="text-sm font-medium text-card-foreground">{t('requestContent')}</span>
                                                 <Badge variant="secondary" className="ml-auto text-xs">
                                                     {log.input_tokens.toLocaleString()} {t('tokens')}
@@ -474,8 +474,8 @@ export function LogCard({ log }: { log: RelayLog }) {
                                 <span>{t('totalTime')}: {formatDuration(log.use_time)}</span>
                             </div>
                             <div className="flex items-center gap-1.5">
-                                <DollarSign className="size-3.5 text-emerald-500" />
-                                <span className="font-medium text-emerald-600 dark:text-emerald-400">
+                                <DollarSign className="size-3.5 text-blue-500" />
+                                <span className="font-medium text-blue-600 dark:text-blue-400">
                                     {t('cost')}: {Number(log.cost).toFixed(6)}
                                 </span>
                             </div>

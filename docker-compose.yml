@@ -1,9 +1,9 @@
 services:
-  octopus:
-    image: bestrui/octopus
+  deeprelay:
+    image: lingyuanzhicheng/deeprelay
     ports:
        - '8080:8080'
     volumes:      
        - '/path/to/data:/app/data'
-    container_name: octopus
+    container_name: deeprelay
     restart: unless-stopped

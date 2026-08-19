@@ -1,13 +1,13 @@
-// Service Worker for Octopus PWA
+// Service Worker for DeepRelay PWA
 // Next.js: hashed assets under /_next/static/ are immutable (Cache First)
 
 /**
  * Cache naming
- * - Prefix MUST match `web/src/lib/sw.ts` (OCTOPUS_CACHE_PREFIX)
+ * - Prefix MUST match `web/src/lib/sw.ts` (DEEPRELAY_CACHE_PREFIX)
  * - Bump CACHE_VERSION when you change caching behavior in this file
  * - FONT cache is version-independent (fonts persist across updates)
  */
-const CACHE_PREFIX = 'octopus';
+const CACHE_PREFIX = 'deeprelay';
 const CACHE_VERSION = 'v1';
 const CACHE_NAMES = {
     static: `${CACHE_PREFIX}-static-${CACHE_VERSION}`,
@@ -45,8 +45,8 @@ self.addEventListener('install', (event) => {
 self.addEventListener('activate', (event) => {
     event.waitUntil(
         (async () => {
-            // Clean up old Octopus caches (previous versions), then take control.
-            await deleteOctopusCaches({ keep: new Set(Object.values(CACHE_NAMES)) });
+            // Clean up old DeepRelay caches (previous versions), then take control.
+            await deleteDeepRelayCaches({ keep: new Set(Object.values(CACHE_NAMES)) });
             await self.clients.claim();
         })()
     );
@@ -173,11 +173,11 @@ self.addEventListener('message', (event) => {
             break;
 
         case SW_MESSAGE_TYPE.CLEAR_CACHE:
-            // Only clear Octopus caches (avoid nuking other same-origin caches).
+            // Only clear DeepRelay caches (avoid nuking other same-origin caches).
             // PRESERVE font cache - fonts should persist across updates.
             event.waitUntil(
                 (async () => {
-                    await deleteOctopusCaches({ keep: new Set([CACHE_NAMES.font]) });
+                    await deleteDeepRelayCaches({ keep: new Set([CACHE_NAMES.font]) });
                     const clients = await self.clients.matchAll();
                     clients.forEach((client) => client.postMessage({ type: SW_MESSAGE_TYPE.CACHE_CLEARED }));
                 })()
@@ -187,14 +187,14 @@ self.addEventListener('message', (event) => {
 });
 
 // ========= Helpers =========
-function isOctopusCacheName(name) {
+function isDeepRelayCacheName(name) {
     return name.startsWith(`${CACHE_PREFIX}-`);
 }
 
-async function deleteOctopusCaches({ keep } = {}) {
+async function deleteDeepRelayCaches({ keep } = {}) {
     const names = await caches.keys();
     const deletions = names
-        .filter((name) => isOctopusCacheName(name))
+        .filter((name) => isDeepRelayCacheName(name))
         .filter((name) => !(keep && keep.has(name)))
         .map((name) => caches.delete(name));
     await Promise.all(deletions);

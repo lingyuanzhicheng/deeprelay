@@ -5,10 +5,10 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/bestruirui/octopus/internal/transformer/model"
-	"github.com/bestruirui/octopus/internal/utils/log"
-	"github.com/bestruirui/octopus/internal/utils/tokenizer"
-	"github.com/bestruirui/octopus/internal/utils/xurl"
+	"github.com/lingyuanzhicheng/deeprelay/internal/transformer/model"
+	"github.com/lingyuanzhicheng/deeprelay/internal/utils/log"
+	"github.com/lingyuanzhicheng/deeprelay/internal/utils/tokenizer"
+	"github.com/lingyuanzhicheng/deeprelay/internal/utils/xurl"
 	"github.com/samber/lo"
 )
 
