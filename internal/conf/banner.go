@@ -7,12 +7,11 @@ import (
 )
 
 const Banner = `
- ██████╗  ██████╗████████╗ ██████╗ ██████╗ ██╗   ██╗███████╗
-██╔═══██╗██╔════╝╚══██╔══╝██╔═══██╗██╔══██╗██║   ██║██╔════╝
-██║   ██║██║        ██║   ██║   ██║██████╔╝██║   ██║███████╗
-██║   ██║██║        ██║   ██║   ██║██╔═══╝ ██║   ██║╚════██║
-╚██████╔╝╚██████╗   ██║   ╚██████╔╝██║     ╚██████╔╝███████║
- ╚═════╝  ╚═════╝   ╚═╝    ╚═════╝ ╚═╝      ╚═════╝ ╚══════╝
+ ____  _____ _____ ____  ____  _____ _        _ __   __
+|  _ \| ____| ____|  _ \|  _ \| ____| |      / \\ \ / /
+| | | |  _| |  _| | |_) | |_) |  _| | |     / _ \\ V / 
+| |_| | |___| |___|  __/|  _ <| |___| |___ / ___ \| |  
+|____/|_____|_____|_|   |_| \_\_____|_____/_/   \_\_|  
 `
 const (
 	Reset  string = "\033[0m"
@@ -34,7 +33,7 @@ func printInfo(label, value, print_color string) {
 }
 
 func PrintBanner() {
-	fmt.Print(Cyan + Bold)
+	fmt.Print(Blue + Bold)
 	fmt.Print(Banner)
 	fmt.Print(Reset)
 
@@ -43,20 +42,20 @@ func PrintBanner() {
 	fmt.Print(Reset)
 
 	fmt.Print(Dim)
-	fmt.Println(strings.Repeat("─", 60))
+	fmt.Println(strings.Repeat("─", 80))
 	fmt.Print(Reset)
 
 	if IsDebug() {
 		printInfo("Mode", "Debug", Red)
 	}
-	printInfo("Version", Version, Green)
-	printInfo("Commit", Commit[:min(8, len(Commit))], Yellow)
+	printInfo("Version", Version, Blue)
+	printInfo("Commit", Commit[:min(8, len(Commit))], Blue)
 	printInfo("Build Time", formatDate(BuildTime), Blue)
-	printInfo("Built By", Author, Purple)
-	printInfo("Repo", Repo, Cyan)
+	printInfo("Built By", Author, Blue)
+	printInfo("Repo", Repo, Blue)
 
 	fmt.Print(Dim)
-	fmt.Println(strings.Repeat("═", 60))
+	fmt.Println(strings.Repeat("═", 80))
 	fmt.Print(Reset)
 }
 
