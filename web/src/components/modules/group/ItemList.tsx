@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useId, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { Layers, GripVertical, X, Trash2 } from 'lucide-react';
 import {
     DragDropContext,
@@ -61,7 +62,7 @@ function MemberItem({
     const [confirmDelete, setConfirmDelete] = useState(false);
     const isDisabled = member.enabled === false;
 
-    return (
+    const content = (
         <div
             // DnD libraries provide imperative refs/props; the hook lint rule (`react-hooks/refs`)
             // flags this pattern, but it's safe and required for correct drag behavior.
@@ -135,7 +136,7 @@ function MemberItem({
 
                 {(!showConfirmDelete || !confirmDelete) && (
                     <motion.button
-                        layoutId={`delete-btn-member-${layoutScope ?? 'default'}-${member.id}`}
+                        layoutId={dnd.isDragging ? undefined : `delete-btn-member-${layoutScope ?? 'default'}-${member.id}`}
                         type="button"
                         onClick={() => showConfirmDelete ? setConfirmDelete(true) : onRemove(member.id)}
                         className="p-1 rounded hover:bg-destructive/10 hover:text-destructive transition-colors"
@@ -175,6 +176,12 @@ function MemberItem({
             </div>
         </div>
     );
+
+    // 拖拽时 portal 到 body，避免祖先 transform / overflow-hidden 导致漂移
+    if (dnd.isDragging && typeof document !== 'undefined') {
+        return createPortal(content, document.body);
+    }
+    return content;
 }
 
 export interface MemberListProps {
