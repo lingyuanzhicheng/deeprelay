@@ -136,6 +136,7 @@ function MemberItem({
 
                 {(!showConfirmDelete || !confirmDelete) && (
                     <motion.button
+                        // eslint-disable-next-line react-hooks/refs
                         layoutId={dnd.isDragging ? undefined : `delete-btn-member-${layoutScope ?? 'default'}-${member.id}`}
                         type="button"
                         onClick={() => showConfirmDelete ? setConfirmDelete(true) : onRemove(member.id)}
@@ -178,6 +179,7 @@ function MemberItem({
     );
 
     // 拖拽时 portal 到 body，避免祖先 transform / overflow-hidden 导致漂移
+    // eslint-disable-next-line react-hooks/refs
     if (dnd.isDragging && typeof document !== 'undefined') {
         return createPortal(content, document.body);
     }

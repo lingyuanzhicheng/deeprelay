@@ -1,4 +1,4 @@
-import { AutoGroupType, ChannelType, type Channel, useFetchModel } from '@/api/endpoints/channel';
+import { AutoGroupType, ChannelType, KeyCostType, KeySelectMode, type Channel, useFetchModel } from '@/api/endpoints/channel';
 import {
     Select,
     SelectContent,
@@ -13,16 +13,35 @@ import { Badge } from '@/components/ui/badge';
 import { toast } from '@/components/common/Toast';
 import { useTranslations } from 'next-intl';
 import { useEffect, useRef, useState } from 'react';
-import { RefreshCw, X, Plus } from 'lucide-react';
+import { createPortal } from 'react-dom';
+import { RefreshCw, X, Plus, GripVertical, RotateCcw } from 'lucide-react';
+import { cn, formatMoney } from '@/lib/utils';
+import { DragDropContext, Draggable, Droppable, type DropResult } from '@hello-pangea/dnd';
 
 export interface ChannelKeyFormItem {
     id?: number;
+    client_id?: string;
     enabled: boolean;
     channel_key: string;
     status_code?: number;
     last_use_time_stamp?: number;
-    total_cost?: number;
+    used_cost?: number;
     remark?: string;
+
+    // 成本控制
+    cost_type?: KeyCostType;
+    period_quota?: number;
+    reset_period?: number;
+    period_start?: number;
+    max_cost?: number;
+
+    // 流量控制
+    max_rpm?: number;
+    max_concurrent?: number;
+
+    // 负载均衡参数
+    priority?: number;
+    weight?: number;
 }
 
 export interface ChannelFormData {
@@ -40,6 +59,7 @@ export interface ChannelFormData {
     auto_sync: boolean;
     auto_group: AutoGroupType;
     match_regex: string;
+    key_select_mode: KeySelectMode;
 }
 
 export interface ChannelFormProps {
@@ -52,6 +72,7 @@ export interface ChannelFormProps {
     onCancel?: () => void;
     cancelText?: string;
     idPrefix?: string;
+    onResetKeyCost?: (keyId: number) => void;
 }
 
 import {
@@ -60,6 +81,24 @@ import {
     AccordionItem,
     AccordionTrigger,
 } from "@/components/ui/accordion";
+
+function formatDateTimeLocal(timestamp?: number): string {
+    if (!timestamp) return '';
+    const date = new Date(timestamp * 1000);
+    const pad = (value: number) => String(value).padStart(2, '0');
+    return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
+}
+
+function parseDateTimeLocal(value: string): number | undefined {
+    if (!value) return undefined;
+    const timestamp = new Date(value).getTime();
+    return Number.isNaN(timestamp) ? undefined : Math.floor(timestamp / 1000);
+}
+
+function formatNumberEmpty(value: number | undefined): string {
+    if (value === undefined || value === null) return '';
+    return value === 0 ? '' : String(value);
+}
 
 export function ChannelForm({
     formData,
@@ -71,6 +110,7 @@ export function ChannelForm({
     onCancel,
     cancelText,
     idPrefix = 'channel',
+    onResetKeyCost,
 }: ChannelFormProps) {
     const t = useTranslations('channel.form');
 
@@ -82,7 +122,7 @@ export function ChannelForm({
             return;
         }
         if (!formData.keys || formData.keys.length === 0) {
-            onFormDataChange({ ...formData, keys: [{ enabled: true, channel_key: '' }] });
+            onFormDataChange({ ...formData, keys: [{ enabled: true, channel_key: '', remark: '' }] });
             return;
         }
         if (!formData.custom_header || formData.custom_header.length === 0) {
@@ -169,7 +209,15 @@ export function ChannelForm({
     const handleAddKey = () => {
         onFormDataChange({
             ...formData,
-            keys: [...formData.keys, { enabled: true, channel_key: '' }],
+            keys: [
+                ...formData.keys,
+                {
+                    enabled: true,
+                    channel_key: '',
+                    remark: '',
+                    client_id: crypto.randomUUID(),
+                },
+            ],
         });
     };
 
@@ -183,6 +231,18 @@ export function ChannelForm({
         if (curr.length <= 1) return;
         const next = curr.filter((_, i) => i !== idx);
         onFormDataChange({ ...formData, keys: next });
+    };
+
+    const handleKeyDragEnd = (result: DropResult) => {
+        if (!result.destination || result.destination.index === result.source.index) return;
+        const next = [...formData.keys];
+        const [moved] = next.splice(result.source.index, 1);
+        if (!moved) return;
+        next.splice(result.destination.index, 0, moved);
+        onFormDataChange({
+            ...formData,
+            keys: next.map((key, index) => ({ ...key, priority: index + 1, client_id: key.client_id })),
+        });
     };
 
     const handleAddBaseUrl = () => {
@@ -321,42 +381,228 @@ export function ChannelForm({
                         {t('add')}
                     </Button>
                 </div>
-                <div className="space-y-2">
-                    {(formData.keys ?? []).map((k, idx) => (
-                        <div key={k.id ?? `new-${idx}`} className="flex items-center gap-2">
-                            <Input
-                                type="text"
-                                value={k.channel_key}
-                                onChange={(e) => handleUpdateKey(idx, { channel_key: e.target.value })}
-                                placeholder={t('apiKey')}
-                                required={idx === 0}
-                                className="rounded-xl flex-1"
-                            />
-                            <Input
-                                type="text"
-                                value={k.remark ?? ''}
-                                onChange={(e) => handleUpdateKey(idx, { remark: e.target.value })}
-                                placeholder={t('remark')}
-                                className="rounded-xl w-32"
-                            />
-                            <Switch
-                                checked={k.enabled}
-                                onCheckedChange={(checked) => handleUpdateKey(idx, { enabled: checked })}
-                            />
-                            <Button
-                                type="button"
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => handleRemoveKey(idx)}
-                                disabled={(formData.keys ?? []).length <= 1}
-                                className="h-8 w-8 p-0 rounded-xl text-muted-foreground hover:text-destructive hover:bg-transparent disabled:opacity-40"
-                                title="Remove"
-                            >
-                                <X className="h-4 w-4" />
-                            </Button>
-                        </div>
+                <div className="flex gap-1">
+                    {([
+                        [KeySelectMode.CostAware, t('keySelectCostAware')],
+                        [KeySelectMode.RoundRobin, t('keySelectRoundRobin')],
+                        [KeySelectMode.Random, t('keySelectRandom')],
+                        [KeySelectMode.Failover, t('keySelectFailover')],
+                        [KeySelectMode.Weighted, t('keySelectWeighted')],
+                    ] as const).map(([mode, label]) => (
+                        <button
+                            key={mode}
+                            type="button"
+                            onClick={() => onFormDataChange({ ...formData, key_select_mode: mode })}
+                            className={cn(
+                                'min-w-0 flex-1 rounded-lg px-1.5 py-1 text-xs font-medium transition-colors',
+                                formData.key_select_mode === mode
+                                    ? 'bg-primary text-primary-foreground'
+                                    : 'bg-muted text-foreground hover:bg-muted/80'
+                            )}
+                        >
+                            {label}
+                        </button>
                     ))}
                 </div>
+                <DragDropContext onDragEnd={handleKeyDragEnd}>
+                    <Droppable droppableId="channel-keys">
+                        {(provided) => (
+                            <div
+                                {...provided.droppableProps}
+                                ref={provided.innerRef}
+                                className="space-y-2"
+                            >
+                                 {(formData.keys ?? []).map((k, idx) => (
+                                    <Draggable
+                                        key={k.id ?? `new-${idx}`}
+                                        draggableId={String(k.id ?? k.client_id ?? `new-${idx}`)}
+                                        index={idx}
+                                    >
+                                        {(draggableProvided, snapshot) => {
+                                            const content = (
+                                                <div
+                                                    ref={draggableProvided.innerRef}
+                                                    {...draggableProvided.draggableProps}
+                                                    className="space-y-2 rounded-xl border border-border/50 p-2"
+                                                    style={{
+                                                        ...(draggableProvided.draggableProps?.style ?? {}),
+                                                        ...(snapshot.isDragging ? { zIndex: 50, boxShadow: '0 8px 32px rgba(0,0,0,0.15)' } : null),
+                                                    }}
+                                                >
+                                                    <div className="flex items-center gap-2">
+                                                        <span className={cn(
+                                                            'size-5 rounded-md text-xs font-bold grid place-items-center shrink-0',
+                                                            !k.enabled ? 'bg-muted text-muted-foreground' : 'bg-primary/10 text-primary'
+                                                        )}>
+                                                            {idx + 1}
+                                                        </span>
+                                                        <div
+                                                            {...draggableProvided.dragHandleProps}
+                                                            className="shrink-0 text-muted-foreground/50 cursor-grab active:cursor-grabbing"
+                                                        >
+                                                            <GripVertical className="h-4 w-4" />
+                                                        </div>
+                                                        <Input
+                                                            type="text"
+                                                            value={k.channel_key}
+                                                            onChange={(e) => handleUpdateKey(idx, { channel_key: e.target.value })}
+                                                            placeholder={t('apiKey')}
+                                                            required={idx === 0}
+                                                            className="min-w-0 flex-1 rounded-xl"
+                                                        />
+                                                        <Switch
+                                                            checked={k.enabled}
+                                                            onCheckedChange={(checked) => handleUpdateKey(idx, { enabled: checked })}
+                                                        />
+                                                        <Button
+                                                            type="button"
+                                                            variant="ghost"
+                                                            size="sm"
+                                                            onClick={() => handleRemoveKey(idx)}
+                                                            disabled={(formData.keys ?? []).length <= 1}
+                                                            className="h-8 w-8 shrink-0 rounded-xl p-0 text-muted-foreground hover:bg-transparent hover:text-destructive disabled:opacity-40"
+                                                            title="Remove"
+                                                        >
+                                                            <X className="h-4 w-4" />
+                                                        </Button>
+                                                    </div>
+                                                    <div className="flex items-center gap-2">
+                                                        <Input
+                                                            type="text"
+                                                            value={k.remark ?? ''}
+                                                            onChange={(e) => handleUpdateKey(idx, { remark: e.target.value })}
+                                                            placeholder={t('remark')}
+                                                            className="min-w-0 flex-1 rounded-xl"
+                                                        />
+                                                        <Select
+                                                            value={String(k.cost_type ?? KeyCostType.Unlimited)}
+                                                            onValueChange={(value) => handleUpdateKey(idx, { cost_type: Number(value) as KeyCostType })}
+                                                        >
+                                                            <SelectTrigger className="w-32 shrink-0 rounded-xl text-xs">
+                                                                <SelectValue placeholder={t('costType')} />
+                                                            </SelectTrigger>
+                                                            <SelectContent className="rounded-xl">
+                                                                <SelectItem value="0">{t('costQuotaUnlimited')}</SelectItem>
+                                                                <SelectItem value="1">{t('costPeriod')}</SelectItem>
+                                                                <SelectItem value="2">{t('costPayAsYouGo')}</SelectItem>
+                                                            </SelectContent>
+                                                        </Select>
+                                                        <div className="flex min-w-0 items-center gap-1">
+                                                            <Input
+                                                                readOnly
+                                                                value=""
+                                                                placeholder={`${formatMoney(k.used_cost ?? 0).formatted.value}${formatMoney(k.used_cost ?? 0).formatted.unit} ${t('usedCost')}`}
+                                                                aria-label={t('usedCost')}
+                                                                className="w-32 rounded-xl text-xs"
+                                                            />
+                                                            {onResetKeyCost && k.id && (
+                                                                <Button
+                                                                    type="button"
+                                                                    variant="ghost"
+                                                                    size="sm"
+                                                                    onClick={() => onResetKeyCost(k.id as number)}
+                                                                    className="h-8 w-8 shrink-0 rounded-xl p-0 text-muted-foreground hover:bg-muted hover:text-foreground"
+                                                                    title={t('resetCost')}
+                                                                >
+                                                                    <RotateCcw className="h-3.5 w-3.5" />
+                                                                </Button>
+                                                            )}
+                                                        </div>
+                                                    </div>
+                                                    <div
+                                                        className="grid gap-2"
+                                                        style={{
+                                                            gridTemplateColumns:
+                                                                formData.key_select_mode === KeySelectMode.Weighted && k.cost_type === KeyCostType.PayAsYouGo
+                                                                    ? 'repeat(4, 1fr)'
+                                                                    : formData.key_select_mode === KeySelectMode.Weighted || k.cost_type === KeyCostType.PayAsYouGo
+                                                                        ? 'repeat(3, 1fr)'
+                                                                        : 'repeat(2, 1fr)',
+                                                        }}
+                                                    >
+                                                    {(formData.key_select_mode === KeySelectMode.Weighted) && (
+                                                        <Input
+                                                            type="text"
+                                                            inputMode="numeric"
+                                                            value={k.weight ?? 1}
+                                                            onChange={(e) => handleUpdateKey(idx, { weight: e.target.value ? Math.max(1, Number(e.target.value)) : 1 })}
+                                                            placeholder={t('weight')}
+                                                            className="rounded-xl text-xs"
+                                                        />
+                                                    )}
+                                                        <Input
+                                                            type="text"
+                                                            inputMode="numeric"
+                                                            value={formatNumberEmpty(k.max_rpm)}
+                                                            onChange={(e) => handleUpdateKey(idx, { max_rpm: e.target.value ? Math.max(0, Number(e.target.value)) : undefined })}
+                                                            placeholder={t('maxRPM')}
+                                                            className="rounded-xl text-xs"
+                                                        />
+                                                        <Input
+                                                            type="text"
+                                                            inputMode="numeric"
+                                                            value={formatNumberEmpty(k.max_concurrent)}
+                                                            onChange={(e) => handleUpdateKey(idx, { max_concurrent: e.target.value ? Math.max(0, Number(e.target.value)) : undefined })}
+                                                            placeholder={t('maxConcurrent')}
+                                                            className="rounded-xl text-xs"
+                                                        />
+                                                        {k.cost_type === KeyCostType.PayAsYouGo && (
+                                                            <Input
+                                                                type="text"
+                                                                inputMode="numeric"
+                                                                value={formatNumberEmpty(k.max_cost)}
+                                                                onChange={(e) => handleUpdateKey(idx, { max_cost: e.target.value && Number(e.target.value) > 0 ? Number(e.target.value) : undefined })}
+                                                                placeholder={t('maxCost')}
+                                                                required
+                                                                className="rounded-xl text-xs"
+                                                            />
+                                                        )}
+                                                    </div>
+                                                    {k.cost_type === KeyCostType.Period && (
+                                                        <div className="grid grid-cols-3 gap-2">
+                                                            <Input
+                                                                type="datetime-local"
+                                                                value={formatDateTimeLocal(k.period_start)}
+                                                                onChange={(e) => handleUpdateKey(idx, { period_start: parseDateTimeLocal(e.target.value) })}
+                                                                aria-label={t('periodStart')}
+                                                                required
+                                                                className="rounded-xl text-xs"
+                                                            />
+                                                            <Input
+                                                                type="text"
+                                                                inputMode="numeric"
+                                                                value={formatNumberEmpty(k.reset_period)}
+                                                                onChange={(e) => handleUpdateKey(idx, { reset_period: e.target.value ? Math.max(1, Number(e.target.value)) : undefined })}
+                                                                placeholder={t('resetPeriod')}
+                                                                required
+                                                                className="rounded-xl text-xs"
+                                                            />
+                                                            <Input
+                                                                type="text"
+                                                                inputMode="numeric"
+                                                                value={formatNumberEmpty(k.period_quota)}
+                                                                onChange={(e) => handleUpdateKey(idx, { period_quota: e.target.value && Number(e.target.value) > 0 ? Number(e.target.value) : undefined })}
+                                                                placeholder={t('periodQuota')}
+                                                                required
+                                                                className="rounded-xl text-xs"
+                                                            />
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            );
+                                            // 拖拽时 portal 到 body，避免祖先 transform / overflow-hidden 导致漂移
+                                            if (snapshot.isDragging && typeof document !== 'undefined') {
+                                                return createPortal(content, document.body);
+                                            }
+                                            return content;
+                                        }}
+                                    </Draggable>
+                                ))}
+                                {provided.placeholder}
+                            </div>
+                        )}
+                    </Droppable>
+                </DragDropContext>
             </div>
 
             <div className="space-y-2">
@@ -401,11 +647,11 @@ export function ChannelForm({
                     )}
                 </div>
 
-                <div className="space-y-2">
-                    <div className="flex items-center justify-between">
-                        <label className="text-xs font-medium text-card-foreground">
-                            {t('modelSelected')} {(autoModels.length + customModels.length) > 0 && `(${autoModels.length + customModels.length})`}
-                        </label>
+            <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                    <label className="text-xs font-medium text-card-foreground">
+                        {t('modelSelected')} {(autoModels.length + customModels.length) > 0 && `(${autoModels.length + customModels.length})`}
+                    </label>
                         {(autoModels.length + customModels.length) > 0 && (
                             <Button
                                 type="button"

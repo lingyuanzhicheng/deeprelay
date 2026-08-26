@@ -12,6 +12,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/gin-gonic/gin"
 	"github.com/lingyuanzhicheng/deeprelay/internal/helper"
 	dbmodel "github.com/lingyuanzhicheng/deeprelay/internal/model"
 	"github.com/lingyuanzhicheng/deeprelay/internal/op"
@@ -21,7 +22,6 @@ import (
 	"github.com/lingyuanzhicheng/deeprelay/internal/transformer/model"
 	"github.com/lingyuanzhicheng/deeprelay/internal/transformer/outbound"
 	"github.com/lingyuanzhicheng/deeprelay/internal/utils/log"
-	"github.com/gin-gonic/gin"
 	"github.com/tmaxmax/go-sse"
 )
 
@@ -98,31 +98,51 @@ func Handler(inboundType inbound.InboundType, c *gin.Context) {
 			continue
 		}
 
-		usedKey := channel.GetChannelKey()
-		if usedKey.ChannelKey == "" {
+		// 获取通道静态候选 key 列表（不含 RPM/并发运行时限制）
+		keyCandidates := channel.GetChannelKeys()
+		if len(keyCandidates) == 0 {
 			iter.Skip(channel.ID, 0, channel.Name, "no available key")
 			continue
 		}
 
-		// 熔断检查
-		if iter.SkipCircuitBreak(channel.ID, usedKey.ID, channel.Name) {
+		// 熔断 + 运行时（RPM/并发）过滤：选出第一个可用的 key
+		var selectedKey dbmodel.ChannelKey
+		var keyAcquired bool
+		for _, k := range keyCandidates {
+			// 熔断检查
+			if iter.SkipCircuitBreak(channel.ID, k.ID, channel.Name) {
+				continue
+			}
+			// 运行时获取：RPM/并发限制
+			if op.ChannelKeyAcquire(k) {
+				selectedKey = k
+				keyAcquired = true
+				break
+			}
+			// 运行时资源不足，记录跳过（不记入熔断器）
+			iter.Skip(channel.ID, k.ID, channel.Name, fmt.Sprintf("key runtime limit: rpm=%d/%d, concurrent=%d/%d", 0, k.MaxRPM, 0, k.MaxConcurrent))
+		}
+		if !keyAcquired {
+			iter.Skip(channel.ID, 0, channel.Name, "no available key after runtime filter")
 			continue
 		}
-
 		// 出站适配器
 		outAdapter := outbound.Get(channel.Type)
 		if outAdapter == nil {
-			iter.Skip(channel.ID, usedKey.ID, channel.Name, fmt.Sprintf("unsupported channel type: %d", channel.Type))
+			op.ChannelKeyRelease(selectedKey.ID)
+			iter.Skip(channel.ID, selectedKey.ID, channel.Name, fmt.Sprintf("unsupported channel type: %d", channel.Type))
 			continue
 		}
 
 		// 类型兼容性检查
 		if internalRequest.IsEmbeddingRequest() && !outbound.IsEmbeddingChannelType(channel.Type) {
-			iter.Skip(channel.ID, usedKey.ID, channel.Name, "channel type not compatible with embedding request")
+			op.ChannelKeyRelease(selectedKey.ID)
+			iter.Skip(channel.ID, selectedKey.ID, channel.Name, "channel type not compatible with embedding request")
 			continue
 		}
 		if internalRequest.IsChatRequest() && !outbound.IsChatChannelType(channel.Type) {
-			iter.Skip(channel.ID, usedKey.ID, channel.Name, "channel type not compatible with chat request")
+			op.ChannelKeyRelease(selectedKey.ID)
+			iter.Skip(channel.ID, selectedKey.ID, channel.Name, "channel type not compatible with chat request")
 			continue
 		}
 
@@ -138,7 +158,7 @@ func Handler(inboundType inbound.InboundType, c *gin.Context) {
 			relayRequest:         req,
 			outAdapter:           outAdapter,
 			channel:              channel,
-			usedKey:              usedKey,
+			usedKey:              selectedKey,
 			firstTokenTimeOutSec: group.FirstTokenTimeOut,
 		}
 
@@ -161,6 +181,7 @@ func Handler(inboundType inbound.InboundType, c *gin.Context) {
 
 // attempt 统一管理一次通道尝试的完整生命周期
 func (ra *relayAttempt) attempt() attemptResult {
+	defer op.ChannelKeyRelease(ra.usedKey.ID)
 	span := ra.iter.StartAttempt(ra.channel.ID, ra.usedKey.ID, ra.channel.Name)
 
 	// 转发请求
@@ -173,8 +194,9 @@ func (ra *relayAttempt) attempt() attemptResult {
 	if fwdErr == nil {
 		// ====== 成功 ======
 		ra.collectResponse()
-		ra.usedKey.TotalCost += ra.metrics.Stats.InputCost + ra.metrics.Stats.OutputCost
-		op.ChannelKeyUpdate(ra.usedKey)
+		if err := op.ChannelKeyIncCost(ra.usedKey, ra.metrics.Stats.InputCost+ra.metrics.Stats.OutputCost); err != nil {
+			log.Warnf("failed to update key cost: %v", err)
+		}
 
 		span.End(dbmodel.AttemptSuccess, statusCode, "")
 

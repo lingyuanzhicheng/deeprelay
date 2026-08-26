@@ -11,7 +11,14 @@ import {
     Globe,
     Key
 } from 'lucide-react';
-import { useUpdateChannel, useDeleteChannel, type Channel, type UpdateChannelRequest } from '@/api/endpoints/channel';
+import {
+    useUpdateChannel,
+    useDeleteChannel,
+    useResetChannelKeyCost,
+    type Channel,
+    type UpdateChannelRequest,
+    KeyCostType,
+} from '@/api/endpoints/channel';
 import {
     MorphingDialogTitle,
     MorphingDialogDescription,
@@ -31,6 +38,7 @@ export function CardContent({ channel, stats }: { channel: Channel; stats: Stats
     const { setIsOpen } = useMorphingDialog();
     const updateChannel = useUpdateChannel();
     const deleteChannel = useDeleteChannel();
+    const resetKeyCost = useResetChannelKeyCost();
     const [isEditing, setIsEditing] = useState(false);
     const [isConfirmingDelete, setIsConfirmingDelete] = useState(false);
     const [formData, setFormData] = useState<ChannelFormData>({
@@ -44,20 +52,31 @@ export function CardContent({ channel, stats }: { channel: Channel; stats: Stats
         keys: channel.keys.length > 0
             ? channel.keys.map((k) => ({
                 id: k.id,
+                client_id: k.id ? `key-${k.id}` : crypto.randomUUID(),
                 enabled: k.enabled,
                 channel_key: k.channel_key,
                 status_code: k.status_code,
                 last_use_time_stamp: k.last_use_time_stamp,
-                total_cost: k.total_cost,
+                used_cost: k.used_cost,
                 remark: k.remark,
+                cost_type: k.cost_type,
+                period_quota: k.period_quota,
+                reset_period: k.reset_period,
+                period_start: k.period_start,
+                max_cost: k.max_cost,
+                max_rpm: k.max_rpm,
+                max_concurrent: k.max_concurrent,
+                priority: k.priority,
+                weight: k.weight,
             }))
-            : [{ enabled: true, channel_key: '', remark: '' }],
+            : [{ enabled: true, channel_key: '', remark: '', client_id: crypto.randomUUID() }],
         model: channel.model,
         custom_model: channel.custom_model,
         proxy: channel.proxy,
         auto_sync: channel.auto_sync,
         auto_group: channel.auto_group,
         match_regex: channel.match_regex ?? '',
+        key_select_mode: channel.key_select_mode,
     });
     const t = useTranslations('channel.detail');
 
@@ -87,6 +106,7 @@ export function CardContent({ channel, stats }: { channel: Channel; stats: Stats
         if (formData.proxy !== channel.proxy) req.proxy = formData.proxy;
         if (formData.auto_sync !== channel.auto_sync) req.auto_sync = formData.auto_sync;
         if (formData.auto_group !== channel.auto_group) req.auto_group = formData.auto_group;
+        if (formData.key_select_mode !== channel.key_select_mode) req.key_select_mode = formData.key_select_mode;
 
         if (!headersEqual(formData.custom_header, channel.custom_header)) {
             req.custom_header = (formData.custom_header ?? [])
@@ -124,19 +144,41 @@ export function CardContent({ channel, stats }: { channel: Channel; stats: Stats
 
         const keys_to_add = nextKeys
             .filter((k) => !k.id && k.channel_key.trim())
-            .map((k) => ({ enabled: k.enabled, channel_key: k.channel_key, remark: k.remark ?? '' }));
+            .map((k) => ({
+                enabled: k.enabled,
+                channel_key: k.channel_key,
+                remark: k.remark ?? '',
+                cost_type: k.cost_type,
+                period_quota: k.period_quota,
+                reset_period: k.reset_period,
+                period_start: k.period_start,
+                max_cost: k.max_cost,
+                max_rpm: k.max_rpm,
+                max_concurrent: k.max_concurrent,
+                priority: k.priority,
+                weight: k.weight,
+            }));
 
         const keys_to_update = nextKeys
             .filter((k) => typeof k.id === 'number' && originalByID.has(k.id as number))
             .map((k) => {
                 const orig = originalByID.get(k.id as number)!;
-                const u: { id: number; enabled?: boolean; channel_key?: string; remark?: string } = { id: k.id as number };
+                const u: NonNullable<UpdateChannelRequest['keys_to_update']>[number] = { id: k.id as number };
                 if (k.enabled !== orig.enabled) u.enabled = k.enabled;
                 if (k.channel_key !== orig.channel_key) u.channel_key = k.channel_key;
-                if ((k.remark ?? '') !== orig.remark) u.remark = k.remark ?? '';
+                if ((k.remark ?? '') !== (orig.remark ?? '')) u.remark = k.remark ?? '';
+                if (k.cost_type !== orig.cost_type) u.cost_type = k.cost_type;
+                 if (k.period_quota !== orig.period_quota) u.period_quota = k.period_quota;
+                 if (k.reset_period !== orig.reset_period) u.reset_period = k.reset_period;
+                 if (k.period_start !== orig.period_start) u.period_start = k.period_start;
+                 if (k.max_cost !== orig.max_cost) u.max_cost = k.max_cost;
+                if (k.max_rpm !== orig.max_rpm) u.max_rpm = k.max_rpm;
+                if (k.max_concurrent !== orig.max_concurrent) u.max_concurrent = k.max_concurrent;
+                if (k.priority !== orig.priority) u.priority = k.priority;
+                if (k.weight !== orig.weight) u.weight = k.weight;
                 return Object.keys(u).length > 1 ? u : null;
             })
-            .filter((u) => u !== null) as Array<{ id: number; enabled?: boolean; channel_key?: string; remark?: string }>;
+            .filter((u): u is NonNullable<UpdateChannelRequest['keys_to_update']>[number] => u !== null);
 
         if (keys_to_add.length > 0) req.keys_to_add = keys_to_add;
         if (keys_to_update.length > 0) req.keys_to_update = keys_to_update;
@@ -348,9 +390,14 @@ export function CardContent({ channel, stats }: { channel: Channel; stats: Stats
 
                                 {/* Keys */}
                                 <section className="space-y-3">
-                                    <h4 className="flex items-center gap-2 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                                        <Key className="size-3.5" />
-                                        {t('sections.keys')}
+                                    <h4 className="flex items-center justify-between text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                                        <span className="flex items-center gap-2">
+                                            <Key className="size-3.5" />
+                                            {t('sections.keys')}
+                                        </span>
+                                        <Badge variant="outline" className="normal-case text-[10px]">
+                                            {t(`keySelectMode.${channel.key_select_mode}`)}
+                                        </Badge>
                                     </h4>
                                     <div className="rounded-2xl border bg-card overflow-hidden">
                                         {channel.keys?.map((key) => (
@@ -369,8 +416,25 @@ export function CardContent({ channel, stats }: { channel: Channel; stats: Stats
                                                     </span>
                                                 )}
 
-                                                <div className="flex items-center gap-2 shrink-0">
-                                                    {key.last_use_time_stamp > 0 && (
+                                                 <div className="flex items-center gap-2 shrink-0">
+                                                     <Badge variant="outline" className="h-5 px-1.5 text-[10px]">
+                                                         {key.cost_type === KeyCostType.Period
+                                                             ? t('period')
+                                                             : key.cost_type === KeyCostType.PayAsYouGo
+                                                                 ? t('payAsYouGo')
+                                                                 : t('unlimited')}
+                                                     </Badge>
+                                                     {key.max_rpm > 0 && (
+                                                         <Badge variant="outline" className="h-5 px-1.5 text-[10px] hidden md:inline-flex">
+                                                             {key.max_rpm} {t('rpm')}
+                                                         </Badge>
+                                                     )}
+                                                     {key.max_concurrent > 0 && (
+                                                         <Badge variant="outline" className="h-5 px-1.5 text-[10px] hidden md:inline-flex">
+                                                             {key.max_concurrent} {t('concurrent')}
+                                                         </Badge>
+                                                     )}
+                                                     {key.last_use_time_stamp > 0 && (
                                                         <span className="text-xs text-muted-foreground whitespace-nowrap hidden sm:inline-block">
                                                             {new Date(key.last_use_time_stamp * 1000).toLocaleString()}
                                                         </span>
@@ -396,8 +460,8 @@ export function CardContent({ channel, stats }: { channel: Channel; stats: Stats
                                                     )}
 
                                                     <Badge variant="secondary" className="h-5 px-1.5 text-[10px]">
-                                                        {formatMoney(key.total_cost).formatted.value}
-                                                        {formatMoney(key.total_cost).formatted.unit}
+                                                        {formatMoney(key.used_cost).formatted.value}
+                                                        {formatMoney(key.used_cost).formatted.unit}
                                                     </Badge>
                                                 </div>
                                             </div>
@@ -457,6 +521,7 @@ export function CardContent({ channel, stats }: { channel: Channel; stats: Stats
                                 onCancel={() => setIsEditing(false)}
                                 cancelText={t('actions.cancel')}
                                 idPrefix="channel"
+                                onResetKeyCost={(keyId) => resetKeyCost.mutate({ channelId: channel.id, keyId })}
                             />
                         </TabsContent>
                     </TabsContents>

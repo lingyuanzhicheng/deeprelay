@@ -25,6 +25,26 @@ export enum AutoGroupType {
     Regex = 3,  // 正则匹配
 }
 
+/**
+ * 密钥成本类型枚举
+ */
+export enum KeyCostType {
+    Unlimited = 0,  // 免费套餐/不限
+    Period = 1,     // 周期额度（按周期重置）
+    PayAsYouGo = 2, // 按量计费（用尽即止）
+}
+
+/**
+ * 密钥选择策略枚举
+ */
+export enum KeySelectMode {
+    CostAware = 0,   // 成本均衡：选 UsedCost 最低的
+    RoundRobin = 1,  // 轮询
+    Random = 2,      // 随机
+    Failover = 3,    // 故障转移：按 Priority 排序
+    Weighted = 4,    // 加权：按 Weight 加权随机
+}
+
 export type BaseUrl = {
     url: string;
     delay: number;
@@ -42,8 +62,23 @@ export type ChannelKey = {
     channel_key: string;
     status_code: number;
     last_use_time_stamp: number;
-    total_cost: number;
+    used_cost: number;
     remark: string;
+
+    // 成本控制
+    cost_type: KeyCostType;
+    period_quota: number;
+    reset_period: number;
+    period_start?: number;
+    max_cost: number;
+
+    // 流量控制
+    max_rpm: number;
+    max_concurrent: number;
+
+    // 负载均衡参数
+    priority: number;
+    weight: number;
 };
 
 /**
@@ -65,6 +100,7 @@ export type Channel = {
     param_override?: string | null;
     channel_proxy?: string | null;
     match_regex?: string | null;
+    key_select_mode: KeySelectMode;
     stats: StatsChannel;
 };
 
@@ -83,7 +119,20 @@ export type CreateChannelRequest = {
     type: ChannelType;
     enabled?: boolean;
     base_urls: BaseUrl[];
-    keys: Array<Pick<ChannelKey, 'enabled' | 'channel_key' | 'remark'>>;
+    keys: Array<{
+        enabled: boolean;
+        channel_key: string;
+        remark?: string;
+        cost_type?: KeyCostType;
+        period_quota?: number;
+        reset_period?: number;
+        period_start?: number;
+        max_cost?: number;
+        max_rpm?: number;
+        max_concurrent?: number;
+        priority?: number;
+        weight?: number;
+    }>;
     model: string;
     custom_model?: string;
     proxy?: boolean;
@@ -93,6 +142,7 @@ export type CreateChannelRequest = {
     channel_proxy?: string | null;
     param_override?: string | null;
     match_regex?: string | null;
+    key_select_mode?: KeySelectMode;
 };
 
 /**
@@ -113,9 +163,37 @@ export type UpdateChannelRequest = {
     channel_proxy?: string | null;
     param_override?: string | null;
     match_regex?: string | null;
+    key_select_mode?: KeySelectMode;
     // keys diff
-    keys_to_add?: Array<Pick<ChannelKey, 'enabled' | 'channel_key' | 'remark'>>;
-    keys_to_update?: Array<{ id: number; enabled?: boolean; channel_key?: string; remark?: string }>;
+    keys_to_add?: Array<{
+        enabled: boolean;
+        channel_key: string;
+        remark?: string;
+        cost_type?: KeyCostType;
+        period_quota?: number;
+        reset_period?: number;
+        period_start?: number;
+        max_cost?: number;
+        max_rpm?: number;
+        max_concurrent?: number;
+        priority?: number;
+        weight?: number;
+    }>;
+    keys_to_update?: Array<{
+        id: number;
+        enabled?: boolean;
+        channel_key?: string;
+        remark?: string;
+        cost_type?: KeyCostType;
+        period_quota?: number;
+        reset_period?: number;
+        period_start?: number;
+        max_cost?: number;
+        max_rpm?: number;
+        max_concurrent?: number;
+        priority?: number;
+        weight?: number;
+    }>;
     keys_to_delete?: number[];
 };
 
@@ -236,6 +314,15 @@ export function useUpdateChannel() {
         onError: (error) => {
             logger.error('渠道更新失败:', error);
         },
+    });
+}
+
+export function useResetChannelKeyCost() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: ({ channelId, keyId }: { channelId: number; keyId: number }) =>
+            apiClient.post<null>(`/api/v1/channel/${channelId}/key/${keyId}/reset-cost`, {}),
+        onSuccess: () => queryClient.invalidateQueries({ queryKey: ['channels', 'list'] }),
     });
 }
 

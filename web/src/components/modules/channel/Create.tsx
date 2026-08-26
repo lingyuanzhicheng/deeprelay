@@ -5,7 +5,7 @@ import {
     MorphingDialogDescription,
     useMorphingDialog,
 } from '@/components/ui/morphing-dialog';
-import { useCreateChannel, ChannelType, AutoGroupType } from '@/api/endpoints/channel';
+import { useCreateChannel, ChannelType, AutoGroupType, KeySelectMode } from '@/api/endpoints/channel';
 import { useTranslations } from 'next-intl';
 import { ChannelForm, type ChannelFormData } from './Form';
 
@@ -19,7 +19,7 @@ export function CreateDialogContent() {
         custom_header: [],
         channel_proxy: '',
         param_override: '',
-        keys: [{ enabled: true, channel_key: '', remark: '' }],
+        keys: [{ enabled: true, channel_key: '', remark: '', client_id: 'new-initial' }],
         model: '',
         custom_model: '',
         auto_sync: false,
@@ -27,6 +27,7 @@ export function CreateDialogContent() {
         enabled: true,
         proxy: false,
         match_regex: '',
+        key_select_mode: KeySelectMode.CostAware,
     });
     const t = useTranslations('channel.create');
 
@@ -38,7 +39,20 @@ export function CreateDialogContent() {
         }));
         const normalizedKeys = formData.keys
             .filter((k) => k.channel_key.trim())
-            .map((k) => ({ enabled: k.enabled, channel_key: k.channel_key, remark: k.remark ?? '' }));
+            .map((k) => ({
+                enabled: k.enabled,
+                channel_key: k.channel_key.trim(),
+                remark: k.remark ?? '',
+                cost_type: k.cost_type,
+                period_quota: k.period_quota,
+                reset_period: k.reset_period,
+                period_start: k.period_start,
+                max_cost: k.max_cost,
+                max_rpm: k.max_rpm,
+                max_concurrent: k.max_concurrent,
+                priority: k.priority,
+                weight: k.weight,
+            }));
         const normalizedHeaders = (formData.custom_header ?? [])
             .map((h) => ({ header_key: h.header_key.trim(), header_value: h.header_value }))
             .filter((h) => h.header_key && h.header_value !== '');
@@ -61,6 +75,7 @@ export function CreateDialogContent() {
                 channel_proxy: channelProxy,
                 param_override: paramOverride,
                 match_regex: formData.match_regex.trim(),
+                key_select_mode: formData.key_select_mode,
             },
             {
                 onSuccess: () => {
@@ -71,7 +86,7 @@ export function CreateDialogContent() {
                         custom_header: [],
                         channel_proxy: '',
                         param_override: '',
-                        keys: [{ enabled: true, channel_key: '', remark: '' }],
+                        keys: [{ enabled: true, channel_key: '', remark: '', client_id: 'new-initial' }],
                         model: '',
                         custom_model: '',
                         auto_sync: false,
@@ -79,6 +94,7 @@ export function CreateDialogContent() {
                         enabled: true,
                         proxy: false,
                         match_regex: '',
+                        key_select_mode: KeySelectMode.CostAware,
                     });
                     setIsOpen(false);
                 }

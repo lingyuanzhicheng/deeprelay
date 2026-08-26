@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"sync"
+	"time"
 
 	"github.com/lingyuanzhicheng/deeprelay/internal/db"
 	"github.com/lingyuanzhicheng/deeprelay/internal/model"
@@ -65,6 +66,39 @@ func ChannelKeyUpdate(key model.ChannelKey) error {
 	channelKeyCacheNeedUpdateLock.Unlock()
 	return nil
 }
+
+// ChannelKeyResetCost 重置单个密钥的已用成本（UsedCost）。
+	// 对于周期密钥，同时把 PeriodStart 重置为当前时间，避免刚重置后被判定为过期。
+func ChannelKeyResetCost(keyID int, ctx context.Context) error {
+	key, ok := channelKeyCache.Get(keyID)
+	if !ok {
+		return fmt.Errorf("channel key not found")
+	}
+	state := getOrCreateKeyRuntime(keyID)
+	state.mu.Lock()
+	defer state.mu.Unlock()
+	key.UsedCost = 0
+	if key.CostType == model.KeyCostTypePeriod {
+		key.PeriodStart = time.Now().Unix()
+	}
+	if err := ChannelKeyUpdate(key); err != nil {
+		return err
+	}
+	if err := db.GetDB().WithContext(ctx).Model(&model.ChannelKey{}).
+		Where("id = ?", keyID).
+		Update("used_cost", 0).Error; err != nil {
+		return fmt.Errorf("failed to update channel key cost in db: %w", err)
+	}
+	if key.CostType == model.KeyCostTypePeriod {
+		if err := db.GetDB().WithContext(ctx).Model(&model.ChannelKey{}).
+			Where("id = ?", keyID).
+			Update("period_start", key.PeriodStart).Error; err != nil {
+			return fmt.Errorf("failed to update channel key period_start in db: %w", err)
+		}
+	}
+	return nil
+}
+
 func ChannelBaseUrlUpdate(channelID int, baseUrl []model.BaseUrl) error {
 	ch, ok := channelCache.Get(channelID)
 	if !ok {
@@ -177,6 +211,10 @@ func ChannelUpdate(req *model.ChannelUpdateRequest, ctx context.Context) (*model
 		selectFields = append(selectFields, "match_regex")
 		updates.MatchRegex = req.MatchRegex
 	}
+	if req.KeySelectMode != nil {
+		selectFields = append(selectFields, "key_select_mode")
+		updates.KeySelectMode = *req.KeySelectMode
+	}
 
 	// 只有当有字段需要更新时才执行 UPDATE
 	if len(selectFields) > 0 {
@@ -207,6 +245,33 @@ func ChannelUpdate(req *model.ChannelUpdateRequest, ctx context.Context) (*model
 			if ku.Remark != nil {
 				updates["remark"] = *ku.Remark
 			}
+			if ku.CostType != nil {
+				updates["cost_type"] = *ku.CostType
+			}
+			if ku.PeriodQuota != nil {
+				updates["period_quota"] = *ku.PeriodQuota
+			}
+			if ku.ResetPeriod != nil {
+				updates["reset_period"] = *ku.ResetPeriod
+			}
+			if ku.PeriodStart != nil {
+				updates["period_start"] = *ku.PeriodStart
+			}
+			if ku.MaxCost != nil {
+				updates["max_cost"] = *ku.MaxCost
+			}
+			if ku.MaxRPM != nil {
+				updates["max_rpm"] = *ku.MaxRPM
+			}
+			if ku.MaxConcurrent != nil {
+				updates["max_concurrent"] = *ku.MaxConcurrent
+			}
+			if ku.Priority != nil {
+				updates["priority"] = *ku.Priority
+			}
+			if ku.Weight != nil {
+				updates["weight"] = *ku.Weight
+			}
 			if len(updates) == 0 {
 				continue
 			}
@@ -223,12 +288,44 @@ func ChannelUpdate(req *model.ChannelUpdateRequest, ctx context.Context) (*model
 	if len(req.KeysToAdd) > 0 {
 		newKeys := make([]model.ChannelKey, 0, len(req.KeysToAdd))
 		for _, ka := range req.KeysToAdd {
-			newKeys = append(newKeys, model.ChannelKey{
+			k := model.ChannelKey{
 				ChannelID:  req.ID,
 				Enabled:    ka.Enabled,
 				ChannelKey: ka.ChannelKey,
 				Remark:     ka.Remark,
-			})
+			}
+			if ka.CostType != nil {
+				k.CostType = *ka.CostType
+			}
+			if ka.PeriodQuota != nil {
+				k.PeriodQuota = *ka.PeriodQuota
+			}
+			if ka.ResetPeriod != nil {
+				k.ResetPeriod = *ka.ResetPeriod
+			}
+			if ka.PeriodStart != nil {
+				k.PeriodStart = *ka.PeriodStart
+			}
+			if ka.MaxCost != nil {
+				k.MaxCost = *ka.MaxCost
+			}
+			if ka.MaxRPM != nil {
+				k.MaxRPM = *ka.MaxRPM
+			}
+			if ka.MaxConcurrent != nil {
+				k.MaxConcurrent = *ka.MaxConcurrent
+			}
+			if ka.Priority != nil {
+				k.Priority = *ka.Priority
+			}
+			if ka.Weight != nil {
+				k.Weight = *ka.Weight
+			}
+			// 周期 Key 初始化 period_start
+			if k.CostType == model.KeyCostTypePeriod && k.PeriodStart == 0 {
+				k.PeriodStart = time.Now().Unix()
+			}
+			newKeys = append(newKeys, k)
 		}
 		if err := tx.Create(&newKeys).Error; err != nil {
 			tx.Rollback()

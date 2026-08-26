@@ -11,12 +11,13 @@ import (
 )
 
 const (
-	TaskPriceUpdate  = "price_update"
-	TaskStatsSave    = "stats_save"
-	TaskRelayLogSave = "relay_log_save"
-	TaskSyncLLM      = "sync_llm"
-	TaskCleanLLM     = "clean_llm"
-	TaskBaseUrlDelay = "base_url_delay"
+	TaskPriceUpdate    = "price_update"
+	TaskStatsSave      = "stats_save"
+	TaskRelayLogSave   = "relay_log_save"
+	TaskSyncLLM        = "sync_llm"
+	TaskCleanLLM       = "clean_llm"
+	TaskBaseUrlDelay   = "base_url_delay"
+	TaskKeyPeriodReset = "key_period_reset"
 )
 
 func Init() {
@@ -59,4 +60,6 @@ func Init() {
 			log.Warnf("relay log save db task failed: %v", err)
 		}
 	})
+
+	Register(TaskKeyPeriodReset, time.Hour, true, op.ChannelKeyResetExpiredPeriods)
 }

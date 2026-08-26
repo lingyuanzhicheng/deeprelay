@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/gin-gonic/gin"
 	"github.com/lingyuanzhicheng/deeprelay/internal/helper"
 	"github.com/lingyuanzhicheng/deeprelay/internal/model"
 	"github.com/lingyuanzhicheng/deeprelay/internal/op"
@@ -14,7 +15,6 @@ import (
 	"github.com/lingyuanzhicheng/deeprelay/internal/server/resp"
 	"github.com/lingyuanzhicheng/deeprelay/internal/server/router"
 	"github.com/lingyuanzhicheng/deeprelay/internal/task"
-	"github.com/gin-gonic/gin"
 )
 
 func init() {
@@ -44,6 +44,10 @@ func init() {
 		AddRoute(
 			router.NewRoute("/fetch-model", http.MethodPost).
 				Handle(fetchModel),
+		).
+		AddRoute(
+			router.NewRoute("/:channel_id/key/:key_id/reset-cost", http.MethodPost).
+				Handle(resetChannelKeyCost),
 		)
 	router.NewGroupRouter("/api/v1/channel").
 		Use(middleware.Auth()).
@@ -160,6 +164,40 @@ func fetchModel(c *gin.Context) {
 		return
 	}
 	resp.Success(c, models)
+}
+
+func resetChannelKeyCost(c *gin.Context) {
+	channelID, err := strconv.Atoi(c.Param("channel_id"))
+	if err != nil {
+		resp.Error(c, http.StatusBadRequest, resp.ErrInvalidParam)
+		return
+	}
+	keyID, err := strconv.Atoi(c.Param("key_id"))
+	if err != nil {
+		resp.Error(c, http.StatusBadRequest, resp.ErrInvalidParam)
+		return
+	}
+	channel, err := op.ChannelGet(channelID, c.Request.Context())
+	if err != nil {
+		resp.Error(c, http.StatusNotFound, "channel not found")
+		return
+	}
+	belongsToChannel := false
+	for _, key := range channel.Keys {
+		if key.ID == keyID {
+			belongsToChannel = true
+			break
+		}
+	}
+	if !belongsToChannel {
+		resp.Error(c, http.StatusNotFound, "channel key not found")
+		return
+	}
+	if err := op.ChannelKeyResetCost(keyID, c.Request.Context()); err != nil {
+		resp.Error(c, http.StatusInternalServerError, err.Error())
+		return
+	}
+	resp.Success(c, nil)
 }
 
 func syncChannel(c *gin.Context) {

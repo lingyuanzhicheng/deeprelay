@@ -17,6 +17,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/gin-gonic/gin"
 	"github.com/lingyuanzhicheng/deeprelay/internal/helper"
 	"github.com/lingyuanzhicheng/deeprelay/internal/model"
 	"github.com/lingyuanzhicheng/deeprelay/internal/op"
@@ -26,7 +27,6 @@ import (
 	"github.com/lingyuanzhicheng/deeprelay/internal/server/resp"
 	"github.com/lingyuanzhicheng/deeprelay/internal/transformer/outbound"
 	"github.com/lingyuanzhicheng/deeprelay/internal/utils/log"
-	"github.com/gin-gonic/gin"
 )
 
 const imagesUpstreamErrorBodyLimit = 16 * 1024
@@ -154,14 +154,28 @@ func ImagesHandler(endpoint string, c *gin.Context) {
 			continue
 		}
 
-		usedKey := channel.GetChannelKey()
-		if usedKey.ChannelKey == "" {
+		keyCandidates := channel.GetChannelKeys()
+		if len(keyCandidates) == 0 {
 			iter.Skip(channel.ID, 0, channel.Name, "no available key")
 			continue
 		}
 
-		// 熔断检查（熔断 key 使用 actualModel=item.ModelName）
-		if iter.SkipCircuitBreak(channel.ID, usedKey.ID, channel.Name) {
+		var selectedKey model.ChannelKey
+		keyAcquired := false
+		for _, candidate := range keyCandidates {
+			// 熔断检查（熔断 key 使用 actualModel=item.ModelName）
+			if iter.SkipCircuitBreak(channel.ID, candidate.ID, channel.Name) {
+				continue
+			}
+			if op.ChannelKeyAcquire(candidate) {
+				selectedKey = candidate
+				keyAcquired = true
+				break
+			}
+			iter.Skip(channel.ID, candidate.ID, channel.Name, "key runtime limit")
+		}
+		if !keyAcquired {
+			iter.Skip(channel.ID, 0, channel.Name, "no available key after runtime filter")
 			continue
 		}
 
@@ -169,14 +183,14 @@ func ImagesHandler(endpoint string, c *gin.Context) {
 			requestModel, group.Mode, channel.Name, item.ModelName,
 			iter.Index()+1, iter.Len(), iter.IsSticky(), stream)
 
-		span := iter.StartAttempt(channel.ID, usedKey.ID, channel.Name)
+		span := iter.StartAttempt(channel.ID, selectedKey.ID, channel.Name)
 
 		// 尝试一次转发
-		statusCode, written, usage, upstreamCT, fwdErr := imagesAttempt(ctx, endpoint, c, bc, isMultipart, boundary, jsonPayload, stream, channel, usedKey.ChannelKey, group.FirstTokenTimeOut, metrics, item.ModelName)
+		statusCode, written, usage, upstreamCT, fwdErr := imagesAttempt(ctx, endpoint, c, bc, isMultipart, boundary, jsonPayload, stream, channel, selectedKey.ChannelKey, group.FirstTokenTimeOut, metrics, item.ModelName)
 
 		// 更新 channel key 状态
-		usedKey.StatusCode = statusCode
-		usedKey.LastUseTimeStamp = time.Now().Unix()
+		selectedKey.StatusCode = statusCode
+		selectedKey.LastUseTimeStamp = time.Now().Unix()
 
 		if fwdErr == nil {
 			// ====== 成功 ======
@@ -186,8 +200,9 @@ func ImagesHandler(endpoint string, c *gin.Context) {
 			}
 			metrics.ResponseContent = buildImagesResponseContentForLog(stream, upstreamCT, usage)
 
-			usedKey.TotalCost += metrics.Stats.InputCost + metrics.Stats.OutputCost
-			op.ChannelKeyUpdate(usedKey)
+			if err := op.ChannelKeyIncCost(selectedKey, metrics.Stats.InputCost+metrics.Stats.OutputCost); err != nil {
+				log.Warnf("failed to update key cost: %v", err)
+			}
 
 			span.End(model.AttemptSuccess, statusCode, "")
 
@@ -198,16 +213,19 @@ func ImagesHandler(endpoint string, c *gin.Context) {
 			})
 
 			// 熔断器：记录成功
-			balancer.RecordSuccess(channel.ID, usedKey.ID, item.ModelName)
+			balancer.RecordSuccess(channel.ID, selectedKey.ID, item.ModelName)
 			// 会话保持：更新粘性记录
-			balancer.SetSticky(apiKeyID, requestModel, channel.ID, usedKey.ID)
+			balancer.SetSticky(apiKeyID, requestModel, channel.ID, selectedKey.ID)
 
+			op.ChannelKeyRelease(selectedKey.ID)
 			metrics.Save(ctx, true, nil, iter.Attempts())
 			return
 		}
 
 		// ====== 失败 ======
-		op.ChannelKeyUpdate(usedKey)
+		selectedKey.StatusCode = statusCode
+		selectedKey.LastUseTimeStamp = time.Now().Unix()
+		op.ChannelKeyUpdate(selectedKey)
 		span.End(model.AttemptFailed, statusCode, fwdErr.Error())
 
 		// Channel 维度统计
@@ -217,8 +235,9 @@ func ImagesHandler(endpoint string, c *gin.Context) {
 		})
 
 		// 熔断器：记录失败
-		balancer.RecordFailure(channel.ID, usedKey.ID, item.ModelName)
+		balancer.RecordFailure(channel.ID, selectedKey.ID, item.ModelName)
 
+		op.ChannelKeyRelease(selectedKey.ID)
 		if written || c.Writer.Written() {
 			metrics.Save(ctx, false, fwdErr, iter.Attempts())
 			return
@@ -302,7 +321,7 @@ func (m *imagesRelayMetrics) Save(ctx context.Context, success bool, err error, 
 	op.StatsAPIKeyUpdate(m.APIKeyID, globalStats)
 	op.StatsChannelUpdate(channelID, globalStats)
 
-	log.Infof("images relay complete: model=%s, channel=%d(%s), success=%t, duration=%dms, input_token=%d, output_token=%d, input_cost=%f, output_cost=%f, total_cost=%f, attempts=%d",
+	log.Infof("images relay complete: model=%s, channel=%d(%s), success=%t, duration=%dms, input_token=%d, output_token=%d, input_cost=%f, output_cost=%f, used_cost=%f, attempts=%d",
 		m.RequestModel, channelID, channelName, success, duration.Milliseconds(),
 		m.Stats.InputToken, m.Stats.OutputToken,
 		m.Stats.InputCost, m.Stats.OutputCost, m.Stats.InputCost+m.Stats.OutputCost,
@@ -376,10 +395,10 @@ func buildImagesResponseContentForLog(stream bool, upstreamCT string, usage *ima
 	}
 	// 不记录 b64_json，仅记录 usage
 	type respForLog struct {
-		Stream      bool        `json:"stream"`
-		ContentType string      `json:"content_type,omitempty"`
+		Stream      bool         `json:"stream"`
+		ContentType string       `json:"content_type,omitempty"`
 		Usage       *imagesUsage `json:"usage,omitempty"`
-		Note        string      `json:"note,omitempty"`
+		Note        string       `json:"note,omitempty"`
 	}
 	obj := respForLog{
 		Stream:      stream,
@@ -756,8 +775,8 @@ func proxySSE(ctx context.Context, c *gin.Context, respUp *http.Response, firstT
 	}
 
 	var (
-		firstWrite      = true
-		currentEvent    string
+		firstWrite       = true
+		currentEvent     string
 		completedScanner = newUsageScanner()
 	)
 
