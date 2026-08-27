@@ -34,6 +34,9 @@ type RelayMetrics struct {
 
 	// 参数覆盖
 	ParamOverride string
+
+	// ChannelID 用于按渠道查价（成本计算的渠道维度）
+	ChannelID int
 }
 
 func NewRelayMetrics(apiKeyID int, requestModel string, req *transformerModel.InternalLLMRequest) *RelayMetrics {
@@ -49,9 +52,10 @@ func (m *RelayMetrics) SetFirstTokenTime(t time.Time) {
 	m.FirstTokenTime = t
 }
 
-func (m *RelayMetrics) SetInternalResponse(resp *transformerModel.InternalLLMResponse, actualModel string) {
+func (m *RelayMetrics) SetInternalResponse(resp *transformerModel.InternalLLMResponse, actualModel string, channelID int) {
 	m.InternalResponse = resp
 	m.ActualModel = actualModel
+	m.ChannelID = channelID
 
 	if resp == nil || resp.Usage == nil {
 		return
@@ -61,7 +65,7 @@ func (m *RelayMetrics) SetInternalResponse(resp *transformerModel.InternalLLMRes
 	m.Stats.InputToken = usage.PromptTokens
 	m.Stats.OutputToken = usage.CompletionTokens
 
-	modelPrice := price.GetLLMPrice(actualModel)
+	modelPrice := price.GetChannelLLMPrice(m.ChannelID, actualModel)
 	if modelPrice == nil {
 		return
 	}

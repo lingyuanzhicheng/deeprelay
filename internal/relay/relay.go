@@ -513,7 +513,7 @@ func (ra *relayAttempt) collectResponse() {
 		return
 	}
 
-	ra.metrics.SetInternalResponse(internalResponse, ra.internalRequest.Model)
+	ra.metrics.SetInternalResponse(internalResponse, ra.internalRequest.Model, ra.channel.ID)
 }
 
 func paramOverrideValue(ptr *string) string {

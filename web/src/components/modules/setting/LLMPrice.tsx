@@ -6,15 +6,15 @@ import { DollarSign, Clock, RefreshCw } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { useSettingList, useSetSetting, SettingKey } from '@/api/endpoints/setting';
-import { useUpdateModelPrice, useLastUpdateTime } from '@/api/endpoints/model';
+import { useChannelLLMPriceSyncAllModelsDev, useLLMPriceLastSyncTime } from '@/api/endpoints/channel_llm_price';
 import { toast } from '@/components/common/Toast';
 
 export function SettingLLMPrice() {
     const t = useTranslations('setting');
     const { data: settings } = useSettingList();
     const setSetting = useSetSetting();
-    const updatePrice = useUpdateModelPrice();
-    const { data: lastUpdateTime } = useLastUpdateTime();
+    const syncAll = useChannelLLMPriceSyncAllModelsDev();
+    const { data: lastUpdateTime } = useLLMPriceLastSyncTime();
 
     const [updateInterval, setUpdateInterval] = useState('');
     const initialUpdateInterval = useRef('');
@@ -41,7 +41,7 @@ export function SettingLLMPrice() {
     };
 
     const handleManualUpdate = () => {
-        updatePrice.mutate(undefined, {
+        syncAll.mutate(undefined, {
             onSuccess: () => {
                 toast.success(t('llmPrice.updateSuccess'));
             },
@@ -96,10 +96,10 @@ export function SettingLLMPrice() {
                     variant="outline"
                     size="sm"
                     onClick={handleManualUpdate}
-                    disabled={updatePrice.isPending}
+                    disabled={syncAll.isPending}
                     className="rounded-xl"
                 >
-                    {updatePrice.isPending ? t('llmPrice.manualUpdate.updating') : t('llmPrice.manualUpdate.button')}
+                    {syncAll.isPending ? t('llmPrice.manualUpdate.updating') : t('llmPrice.manualUpdate.button')}
                 </Button>
             </div>
         </div>

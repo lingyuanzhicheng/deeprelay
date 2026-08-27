@@ -58,6 +58,9 @@ type Channel struct {
 	Stats         *StatsChannel         `json:"stats,omitempty" gorm:"foreignKey:ChannelID"`
 	MatchRegex    *string               `json:"match_regex"`
 	KeySelectMode KeySelectMode         `json:"key_select_mode" gorm:"default:0"`
+
+	// LLMPriceSyncTime 记录该渠道最近一次成功同步 modelsdev 价格的时间（Unix 秒）。
+	LLMPriceSyncTime int64 `json:"llm_price_sync_time,omitempty" gorm:"default:0"`
 }
 
 type BaseUrl struct {

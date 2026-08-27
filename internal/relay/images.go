@@ -196,7 +196,7 @@ func ImagesHandler(endpoint string, c *gin.Context) {
 			// ====== 成功 ======
 			metrics.ActualModel = item.ModelName
 			if usage != nil {
-				metrics.SetUsageFromImages(item.ModelName, *usage)
+				metrics.SetUsageFromImages(item.ModelName, *usage, channel.ID)
 			}
 			metrics.ResponseContent = buildImagesResponseContentForLog(stream, upstreamCT, usage)
 
@@ -268,6 +268,9 @@ type imagesRelayMetrics struct {
 
 	RequestContent  string
 	ResponseContent string
+
+	// ChannelID 用于按渠道查价（成本计算的渠道维度）
+	ChannelID int
 }
 
 func newImagesRelayMetrics(apiKeyID int, requestModel string) *imagesRelayMetrics {
@@ -284,12 +287,13 @@ func (m *imagesRelayMetrics) SetFirstTokenTime(t time.Time) {
 	}
 }
 
-func (m *imagesRelayMetrics) SetUsageFromImages(actualModel string, u imagesUsage) {
+func (m *imagesRelayMetrics) SetUsageFromImages(actualModel string, u imagesUsage, channelID int) {
 	m.ActualModel = actualModel
+	m.ChannelID = channelID
 	m.Stats.InputToken = int64(u.InputTokens)
 	m.Stats.OutputToken = int64(u.OutputTokens)
 
-	modelPrice := price.GetLLMPrice(actualModel)
+	modelPrice := price.GetChannelLLMPrice(m.ChannelID, actualModel)
 	if modelPrice == nil {
 		return
 	}

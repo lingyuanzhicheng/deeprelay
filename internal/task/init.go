@@ -6,7 +6,6 @@ import (
 
 	"github.com/lingyuanzhicheng/deeprelay/internal/model"
 	"github.com/lingyuanzhicheng/deeprelay/internal/op"
-	"github.com/lingyuanzhicheng/deeprelay/internal/price"
 	"github.com/lingyuanzhicheng/deeprelay/internal/utils/log"
 )
 
@@ -27,10 +26,10 @@ func Init() {
 		return
 	}
 	priceUpdateInterval := time.Duration(priceUpdateIntervalHours) * time.Hour
-	// 注册价格更新任务
+	// 注册价格更新任务：按渠道绑定关系同步 modelsdev
 	Register(string(model.SettingKeyModelInfoUpdateInterval), priceUpdateInterval, true, func() {
-		if err := price.UpdateLLMPrice(context.Background()); err != nil {
-			log.Warnf("failed to update price info: %v", err)
+		if err := op.ChannelLLMPriceSyncAllFromModelsDev(context.Background()); err != nil {
+			log.Warnf("failed to sync channel llm price from modelsdev: %v", err)
 		}
 	})
 

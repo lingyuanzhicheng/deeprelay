@@ -15,7 +15,6 @@ import { cn } from '@/lib/utils';
 import { useNavStore, type NavItem } from '@/components/modules/navbar';
 import { CreateDialogContent as ChannelCreateContent } from '@/components/modules/channel/Create';
 import { CreateDialogContent as GroupCreateContent } from '@/components/modules/group/Create';
-import { CreateDialogContent as ModelCreateContent } from '@/components/modules/model/Create';
 import { useTranslations } from 'next-intl';
 import { useSearchStore } from './search-store';
 import {
@@ -24,14 +23,12 @@ import {
     type ToolbarPage,
     type ChannelFilter,
     type GroupFilter,
-    type ModelFilter,
     type ToolbarSortField,
     type ToolbarSortOrder,
 } from './view-options-store';
 
 const CHANNEL_FILTER_OPTIONS: ChannelFilter[] = ['all', 'enabled', 'disabled'];
 const GROUP_FILTER_OPTIONS: GroupFilter[] = ['all', 'with-members', 'empty'];
-const MODEL_FILTER_OPTIONS: ModelFilter[] = ['all', 'priced', 'free'];
 type CombinedSortOption = {
     value: `${ToolbarSortField}-${ToolbarSortOrder}`;
     field: ToolbarSortField;
@@ -56,7 +53,7 @@ function CreateDialogContent({ activeItem }: { activeItem: ToolbarPage }) {
         case 'group':
             return <GroupCreateContent />;
         case 'model':
-            return <ModelCreateContent />;
+            return null;
     }
 }
 
@@ -76,16 +73,15 @@ export function Toolbar() {
     const setSortOrder = useToolbarViewOptionsStore((s) => s.setSortOrder);
     const channelFilter = useToolbarViewOptionsStore((s) => s.channelFilter);
     const groupFilter = useToolbarViewOptionsStore((s) => s.groupFilter);
-    const modelFilter = useToolbarViewOptionsStore((s) => s.modelFilter);
     const setChannelFilter = useToolbarViewOptionsStore((s) => s.setChannelFilter);
     const setGroupFilter = useToolbarViewOptionsStore((s) => s.setGroupFilter);
-    const setModelFilter = useToolbarViewOptionsStore((s) => s.setModelFilter);
     const [expandedSearchItem, setExpandedSearchItem] = useState<ToolbarPage | null>(null);
     const searchExpanded = expandedSearchItem === toolbarItem;
 
     if (!toolbarItem) return null;
     const showLayoutOptions = toolbarItem !== 'group';
     const showCombinedSortOptions = toolbarItem === 'channel' || toolbarItem === 'group';
+    const showFilterOptions = toolbarItem === 'channel' || toolbarItem === 'group';
 
     const channelFilterLabelKeys: Record<ChannelFilter, string> = {
         all: 'popover.filter.channel.all',
@@ -96,11 +92,6 @@ export function Toolbar() {
         all: 'popover.filter.group.all',
         'with-members': 'popover.filter.group.withMembers',
         empty: 'popover.filter.group.empty',
-    };
-    const modelFilterLabelKeys: Record<ModelFilter, string> = {
-        all: 'popover.filter.model.all',
-        priced: 'popover.filter.model.priced',
-        free: 'popover.filter.model.free',
     };
 
     const filterOptions = toolbarItem === 'channel'
@@ -113,16 +104,13 @@ export function Toolbar() {
                 value,
                 label: t(groupFilterLabelKeys[value]),
             }))
-            : MODEL_FILTER_OPTIONS.map((value) => ({
-                value,
-                label: t(modelFilterLabelKeys[value]),
-            }));
+            : [];
 
     const activeFilter = toolbarItem === 'channel'
         ? channelFilter
         : toolbarItem === 'group'
             ? groupFilter
-            : modelFilter;
+            : '';
 
     const handleFilterChange = (value: string) => {
         switch (toolbarItem) {
@@ -131,9 +119,6 @@ export function Toolbar() {
                 break;
             case 'group':
                 setGroupFilter(value as GroupFilter);
-                break;
-            case 'model':
-                setModelFilter(value as ModelFilter);
                 break;
         }
     };
@@ -297,42 +282,46 @@ export function Toolbar() {
                                 )}
                             </div>
 
-                            <div className="grid gap-2">
-                                <p className="text-xs font-medium text-muted-foreground">{t('popover.filter.title')}</p>
+                            {showFilterOptions && (
                                 <div className="grid gap-2">
-                                    {filterOptions.map((option) => (
-                                        <button
-                                            key={option.value}
-                                            type="button"
-                                            onClick={() => handleFilterChange(option.value)}
-                                            className={cn(
-                                                'h-8 rounded-lg border px-2 text-xs font-medium text-left transition-colors',
-                                                activeFilter === option.value
-                                                    ? 'border-primary/30 bg-primary text-primary-foreground'
-                                                    : 'border-border bg-muted/20 text-foreground hover:bg-muted/30'
-                                            )}
-                                        >
-                                            {option.label}
-                                        </button>
-                                    ))}
+                                    <p className="text-xs font-medium text-muted-foreground">{t('popover.filter.title')}</p>
+                                    <div className="grid gap-2">
+                                        {filterOptions.map((option) => (
+                                            <button
+                                                key={option.value}
+                                                type="button"
+                                                onClick={() => handleFilterChange(option.value)}
+                                                className={cn(
+                                                    'h-8 rounded-lg border px-2 text-xs font-medium text-left transition-colors',
+                                                    activeFilter === option.value
+                                                        ? 'border-primary/30 bg-primary text-primary-foreground'
+                                                        : 'border-border bg-muted/20 text-foreground hover:bg-muted/30'
+                                                )}
+                                            >
+                                                {option.label}
+                                            </button>
+                                        ))}
+                                    </div>
                                 </div>
-                            </div>
+                            )}
                         </div>
                     </PopoverContent>
                 </Popover>
 
                 {/* 创建按钮 */}
-                <MorphingDialog>
-                    <MorphingDialogTrigger className={buttonVariants({ variant: "ghost", size: "icon", className: "rounded-xl transition-none hover:bg-transparent text-muted-foreground hover:text-foreground" })}>
-                        <Plus className="size-4 transition-colors duration-300" />
-                    </MorphingDialogTrigger>
+                {toolbarItem !== 'model' && (
+                    <MorphingDialog>
+                        <MorphingDialogTrigger className={buttonVariants({ variant: "ghost", size: "icon", className: "rounded-xl transition-none hover:bg-transparent text-muted-foreground hover:text-foreground" })}>
+                            <Plus className="size-4 transition-colors duration-300" />
+                        </MorphingDialogTrigger>
 
-                    <MorphingDialogContainer>
-                        <MorphingDialogContent className="w-fit max-w-full bg-card text-card-foreground px-6 py-4 rounded-3xl custom-shadow max-h-[calc(100vh-2rem)] flex flex-col overflow-hidden">
-                            <CreateDialogContent activeItem={toolbarItem} />
-                        </MorphingDialogContent>
-                    </MorphingDialogContainer>
-                </MorphingDialog>
+                        <MorphingDialogContainer>
+                            <MorphingDialogContent className="w-fit max-w-full bg-card text-card-foreground px-6 py-4 rounded-3xl custom-shadow max-h-[calc(100vh-2rem)] flex flex-col overflow-hidden">
+                                <CreateDialogContent activeItem={toolbarItem} />
+                            </MorphingDialogContent>
+                        </MorphingDialogContainer>
+                    </MorphingDialog>
+                )}
             </motion.div>
         </AnimatePresence>
     );

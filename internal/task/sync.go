@@ -77,32 +77,17 @@ func SyncModelsTask() {
 			}
 		}
 
+		// 上游模型列表变更后联动渠道模型价格表：新增 0 价、移除同步删除
+		if err := op.ChannelLLMPriceSyncFromUpstream(channel.ID, newModels, ctx); err != nil {
+			log.Warnf("failed to sync channel llm price from upstream for channel %s: %v", channel.Name, err)
+		}
+
 		// 自动分组
 		if len(newModels) > 0 {
 			helper.ChannelAutoGroup(&channel, ctx)
 		}
 	}
-	llmPrice, err := op.LLMList(ctx)
-	if err != nil {
-		log.Errorf("failed to list models price: %v", err)
-		return
-	}
-	llmPriceNames := make([]string, 0, len(llmPrice))
-	for _, price := range llmPrice {
-		llmPriceNames = append(llmPriceNames, price.Name)
-	}
 
-	deletedNorm, addedNorm := diff.Diff(llmPriceNames, totalNewModels)
-	if len(deletedNorm) > 0 {
-		if err := helper.LLMPriceDeleteFromDBWithNoPrice(deletedNorm, ctx); err != nil {
-			log.Errorf("failed to batch delete models price: %v", err)
-		}
-	}
-	if len(addedNorm) > 0 {
-		if err := helper.LLMPriceAddToDB(addedNorm, ctx); err != nil {
-			log.Errorf("failed to add models price: %v", err)
-		}
-	}
 	lastSyncModelsTime = time.Now()
 }
 

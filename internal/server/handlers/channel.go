@@ -4,7 +4,6 @@ import (
 	"context"
 	"net/http"
 	"strconv"
-	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -15,6 +14,8 @@ import (
 	"github.com/lingyuanzhicheng/deeprelay/internal/server/resp"
 	"github.com/lingyuanzhicheng/deeprelay/internal/server/router"
 	"github.com/lingyuanzhicheng/deeprelay/internal/task"
+	"github.com/lingyuanzhicheng/deeprelay/internal/utils/log"
+	"github.com/lingyuanzhicheng/deeprelay/internal/utils/xstrings"
 )
 
 func init() {
@@ -89,9 +90,10 @@ func createChannel(c *gin.Context) {
 	go func(channel *model.Channel) {
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
 		defer cancel()
-		modelStr := channel.Model + "," + channel.CustomModel
-		modelArray := strings.Split(modelStr, ",")
-		helper.LLMPriceAddToDB(modelArray, ctx)
+		modelArray := xstrings.SplitTrimCompact(",", channel.Model, channel.CustomModel)
+		if err := op.ChannelLLMPriceSyncFromUpstream(channel.ID, modelArray, ctx); err != nil {
+			log.Warnf("failed to sync channel llm price from upstream for channel %s: %v", channel.Name, err)
+		}
 		helper.ChannelBaseUrlDelayUpdate(channel, ctx)
 		helper.ChannelAutoGroup(channel, ctx)
 	}(&channel)
@@ -114,9 +116,10 @@ func updateChannel(c *gin.Context) {
 	go func(channel *model.Channel) {
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
 		defer cancel()
-		modelStr := channel.Model + "," + channel.CustomModel
-		modelArray := strings.Split(modelStr, ",")
-		helper.LLMPriceAddToDB(modelArray, ctx)
+		modelArray := xstrings.SplitTrimCompact(",", channel.Model, channel.CustomModel)
+		if err := op.ChannelLLMPriceSyncFromUpstream(channel.ID, modelArray, ctx); err != nil {
+			log.Warnf("failed to sync channel llm price from upstream for channel %s: %v", channel.Name, err)
+		}
 		helper.ChannelBaseUrlDelayUpdate(channel, ctx)
 		helper.ChannelAutoGroup(channel, ctx)
 	}(channel)

@@ -1,50 +1,52 @@
 'use client';
 
 import { useMemo } from 'react';
-import { useModelList } from '@/api/endpoints/model';
-import { ModelItem } from './Item';
+import { useChannelList } from '@/api/endpoints/channel';
+import { ChannelCard } from './ChannelCard';
 import { useSearchStore, useToolbarViewOptionsStore } from '@/components/modules/toolbar';
 import { VirtualizedGrid } from '@/components/common/VirtualizedGrid';
+import { Loader2 } from 'lucide-react';
 
 export function Model() {
-    const { data: models } = useModelList();
+    const { data: channelsData, isLoading } = useChannelList();
     const pageKey = 'model' as const;
     const searchTerm = useSearchStore((s) => s.getSearchTerm(pageKey));
     const layout = useToolbarViewOptionsStore((s) => s.getLayout(pageKey));
     const sortOrder = useToolbarViewOptionsStore((s) => s.getSortOrder(pageKey));
-    const filter = useToolbarViewOptionsStore((s) => s.modelFilter);
 
-    const sortedModels = useMemo(() => {
-        if (!models) return [];
-        return [...models].sort((a, b) =>
-            sortOrder === 'asc' ? a.name.localeCompare(b.name) : b.name.localeCompare(a.name)
+    const sortedChannels = useMemo(() => {
+        if (!channelsData) return [];
+        return [...channelsData].sort((a, b) =>
+            sortOrder === 'asc'
+                ? a.raw.name.localeCompare(b.raw.name)
+                : b.raw.name.localeCompare(a.raw.name),
         );
-    }, [models, sortOrder]);
+    }, [channelsData, sortOrder]);
 
-    const visibleModels = useMemo(() => {
+    const visibleChannels = useMemo(() => {
         const term = searchTerm.toLowerCase().trim();
-        const byName = !term ? sortedModels : sortedModels.filter((m) => m.name.toLowerCase().includes(term));
-        const hasPricing = (model: (typeof byName)[number]) =>
-            model.input + model.output + model.cache_read + model.cache_write > 0;
+        if (!term) return sortedChannels;
+        return sortedChannels.filter((c) => c.raw.name.toLowerCase().includes(term));
+    }, [sortedChannels, searchTerm]);
 
-        if (filter === 'priced') {
-            return byName.filter(hasPricing);
-        }
-        if (filter === 'free') {
-            return byName.filter((m) => !hasPricing(m));
-        }
-
-        return byName;
-    }, [sortedModels, searchTerm, filter]);
+    if (isLoading) {
+        return (
+            <div className="flex items-center justify-center py-12">
+                <Loader2 className="size-6 animate-spin text-muted-foreground" />
+            </div>
+        );
+    }
 
     return (
         <VirtualizedGrid
-            items={visibleModels}
+            items={visibleChannels}
             layout={layout}
             columns={{ default: 1, md: 2, lg: 3 }}
-            estimateItemHeight={112}
-            getItemKey={(model) => `model-${model.name}`}
-            renderItem={(model) => <ModelItem model={model} layout={layout} />}
+            estimateItemHeight={220}
+            getItemKey={(item) => `model-channel-${item.raw.id}`}
+            renderItem={(item) => (
+                <ChannelCard channel={item.raw} layout={layout} />
+            )}
         />
     );
 }

@@ -15,6 +15,8 @@ type DBDump struct {
 	Groups      []Group      `json:"groups,omitempty"`
 	GroupItems []GroupItem `json:"group_items,omitempty"`
 	LLMInfos   []LLMInfo   `json:"llm_infos,omitempty"`
+	// ChannelLLMPrices 渠道×模型实际结算单价表（重构后的新价格来源）。
+	ChannelLLMPrices []ChannelLLMPrice `json:"channel_llm_prices,omitempty"`
 	APIKeys    []APIKey    `json:"api_keys,omitempty"`
 	Settings   []Setting   `json:"settings,omitempty"`
 
