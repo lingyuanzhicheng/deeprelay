@@ -28,12 +28,18 @@ export interface ChannelLLMPriceBind {
 }
 
 /**
- * modelsdev 模型项（OpenAI 兼容格式）
+ * modelsdev 模型项（对齐后端 ModelsDevModelInfo，含价格 Cost）
  */
 export interface ModelsDevModel {
     id: string;
     object: string;
     owned_by: string;
+    cost: {
+        input: number;
+        output: number;
+        cache_read: number;
+        cache_write: number;
+    };
 }
 
 const QUERY_KEY = 'channel-llm-price';
@@ -234,7 +240,7 @@ export function useLLMPriceLastSyncTime() {
 }
 
 /**
- * 获取 modelsdev provider 列表
+ * 获取 modelsdev provider 列表（后端读内存缓存，不触发网络请求）
  */
 export function useModelsDevProviders() {
     return useQuery({
@@ -242,12 +248,12 @@ export function useModelsDevProviders() {
         queryFn: async () => {
             return apiClient.get<string[]>('/api/v1/channel-llm-price/modelsdev/providers');
         },
-        staleTime: 5 * 60 * 1000, // provider 列表稳定，5 分钟缓存
+        staleTime: 5 * 60 * 1000,
     });
 }
 
 /**
- * 获取某 provider 下 modelsdev 模型列表
+ * 获取某 provider 下 modelsdev 模型列表（含价格 Cost，后端读内存缓存）
  */
 export function useModelsDevModels(provider: string | null) {
     return useQuery({
@@ -262,19 +268,6 @@ export function useModelsDevModels(provider: string | null) {
         enabled: !!provider,
         staleTime: 5 * 60 * 1000,
     });
-}
-
-export function useModelsDevInitData() {
-    const queryClient = useQueryClient();
-    const providersQuery = useModelsDevProviders();
-    return {
-        providers: providersQuery.data ?? [],
-        isLoading: providersQuery.isLoading,
-        prefetch: () => queryClient.prefetchQuery({
-            queryKey: [QUERY_KEY, 'modelsdev-providers'],
-            queryFn: () => apiClient.get<string[]>('/api/v1/channel-llm-price/modelsdev/providers'),
-        }),
-    };
 }
 
 // 便捷重导出：与 channel.ts 的 AutoGroupType 一致，供价格页选择匹配模式

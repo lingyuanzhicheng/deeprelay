@@ -12,6 +12,7 @@ import { NavBar, useNavStore } from '@/components/modules/navbar';
 import { useTranslations } from 'next-intl'
 import Logo, { LOGO_DRAW_END_MS } from '@/components/modules/logo';
 import { Toolbar } from '@/components/modules/toolbar';
+import { LogActions } from '@/components/modules/log/actions';
 import { Button } from '@/components/ui/button';
 import { ENTRANCE_VARIANTS } from '@/lib/animations/fluid-transitions';
 import { useQueryClient } from '@tanstack/react-query';
@@ -144,6 +145,9 @@ export function AppContainer() {
                             break;
                         }
                         case 'setting': {
+                            break;
+                        }
+                        case 'apikey': {
                             prefetches.push(
                                 queryClient.prefetchQuery({
                                     queryKey: ['apikeys', 'list'],
@@ -250,6 +254,7 @@ export function AppContainer() {
                         </AnimatePresence>
                     </div>
                     <div className="ml-auto flex items-center gap-2">
+                        {activeItem === 'log' && <LogActions />}
                         <Toolbar />
                         <Button variant="ghost" size="icon" onClick={logout} aria-label={tDashboard('logout')} className="rounded-xl hover:bg-destructive/10 hover:text-destructive">
                             <LogOut className="size-4" />

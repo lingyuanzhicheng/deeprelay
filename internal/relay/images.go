@@ -27,6 +27,7 @@ import (
 	"github.com/lingyuanzhicheng/deeprelay/internal/server/resp"
 	"github.com/lingyuanzhicheng/deeprelay/internal/transformer/outbound"
 	"github.com/lingyuanzhicheng/deeprelay/internal/utils/log"
+	"github.com/lingyuanzhicheng/deeprelay/internal/utils/snowflake"
 )
 
 const imagesUpstreamErrorBodyLimit = 16 * 1024
@@ -95,8 +96,16 @@ func ImagesHandler(endpoint string, c *gin.Context) {
 	}
 
 	// supported_models 校验（复用 APIKeyAuth 注入）
+	unlimitedModels := c.GetBool("api_key_unlimited_models")
 	supportedModels := strings.TrimSpace(c.GetString("supported_models"))
-	if supportedModels != "" {
+	resolvedModel, aliasErr := resolveModelAlias(requestModel, c)
+	if aliasErr != "" {
+		resp.Error(c, http.StatusBadRequest, aliasErr)
+		return
+	}
+	if resolvedModel != "" {
+		requestModel = resolvedModel
+	} else if !unlimitedModels {
 		supportedModelsArray := strings.Split(supportedModels, ",")
 		if !slices.Contains(supportedModelsArray, requestModel) {
 			resp.Error(c, http.StatusBadRequest, "model not supported")
@@ -119,8 +128,9 @@ func ImagesHandler(endpoint string, c *gin.Context) {
 	}
 
 	// 初始化 Metrics（Images 独立，避免 b64_json 内存膨胀）
-	metrics := newImagesRelayMetrics(apiKeyID, requestModel)
+	metrics := newImagesRelayMetrics(apiKeyID, requestModel, group.ID)
 	metrics.RequestContent = buildImagesRequestContentForLog(isMultipart, bc, jsonPayload)
+	metrics.NotifyProgress("pending")
 
 	var lastErr error
 
@@ -200,17 +210,11 @@ func ImagesHandler(endpoint string, c *gin.Context) {
 			}
 			metrics.ResponseContent = buildImagesResponseContentForLog(stream, upstreamCT, usage)
 
-			if err := op.ChannelKeyIncCost(selectedKey, metrics.Stats.InputCost+metrics.Stats.OutputCost); err != nil {
+			if err := op.ChannelKeyIncCost(selectedKey, metrics.Stats.Total()); err != nil {
 				log.Warnf("failed to update key cost: %v", err)
 			}
 
 			span.End(model.AttemptSuccess, statusCode, "")
-
-			// Channel 维度统计
-			op.StatsChannelUpdate(channel.ID, model.StatsMetrics{
-				WaitTime:       span.Duration().Milliseconds(),
-				RequestSuccess: 1,
-			})
 
 			// 熔断器：记录成功
 			balancer.RecordSuccess(channel.ID, selectedKey.ID, item.ModelName)
@@ -227,12 +231,6 @@ func ImagesHandler(endpoint string, c *gin.Context) {
 		selectedKey.LastUseTimeStamp = time.Now().Unix()
 		op.ChannelKeyUpdate(selectedKey)
 		span.End(model.AttemptFailed, statusCode, fwdErr.Error())
-
-		// Channel 维度统计
-		op.StatsChannelUpdate(channel.ID, model.StatsMetrics{
-			WaitTime:      span.Duration().Milliseconds(),
-			RequestFailed: 1,
-		})
 
 		// 熔断器：记录失败
 		balancer.RecordFailure(channel.ID, selectedKey.ID, item.ModelName)
@@ -264,7 +262,15 @@ type imagesRelayMetrics struct {
 	StartTime    time.Time
 	FirstToken   time.Time
 
+	GroupID int
+
+	// ProgressID 进行中日志的预生成 ID
+	ProgressID int64
+
+	// Stats token 计数 + 渠道进价成本
 	Stats model.StatsMetrics
+	// APIKeyStats 密钥售价收入（llminfo 价格），token 计数与 Stats 相同
+	APIKeyStats model.StatsMetrics
 
 	RequestContent  string
 	ResponseContent string
@@ -273,12 +279,29 @@ type imagesRelayMetrics struct {
 	ChannelID int
 }
 
-func newImagesRelayMetrics(apiKeyID int, requestModel string) *imagesRelayMetrics {
+func newImagesRelayMetrics(apiKeyID int, requestModel string, groupID int) *imagesRelayMetrics {
 	return &imagesRelayMetrics{
 		APIKeyID:     apiKeyID,
 		RequestModel: requestModel,
 		StartTime:    time.Now(),
+		GroupID:      groupID,
+		ProgressID:   snowflake.GenerateID(),
 	}
+}
+
+// NotifyProgress 将进行中日志的进度事件推送给 SSE 订阅者
+func (m *imagesRelayMetrics) NotifyProgress(status string) {
+	relayLog := model.RelayLog{
+		ID:               m.ProgressID,
+		Time:             m.StartTime.Unix(),
+		RequestModelName: m.RequestModel,
+		Status:           status,
+		RequestContent:   m.RequestContent,
+	}
+	if apiKey, getErr := op.APIKeyGet(m.APIKeyID, context.Background()); getErr == nil {
+		relayLog.RequestAPIKeyName = apiKey.Name
+	}
+	op.RelayLogNotify(relayLog)
 }
 
 func (m *imagesRelayMetrics) SetFirstTokenTime(t time.Time) {
@@ -292,44 +315,54 @@ func (m *imagesRelayMetrics) SetUsageFromImages(actualModel string, u imagesUsag
 	m.ChannelID = channelID
 	m.Stats.InputToken = int64(u.InputTokens)
 	m.Stats.OutputToken = int64(u.OutputTokens)
+	m.APIKeyStats.InputToken = int64(u.InputTokens)
+	m.APIKeyStats.OutputToken = int64(u.OutputTokens)
 
-	modelPrice := price.GetChannelLLMPrice(m.ChannelID, actualModel)
-	if modelPrice == nil {
-		return
+	if p := price.GetChannelLLMPrice(channelID, actualModel); p != nil {
+		m.Stats.InputCost = float64(u.InputTokens) * p.Input * 1e-6
+		m.Stats.OutputCost = float64(u.OutputTokens) * p.Output * 1e-6
 	}
-
-	m.Stats.InputCost = float64(u.InputTokens) * modelPrice.Input * 1e-6
-	m.Stats.OutputCost = float64(u.OutputTokens) * modelPrice.Output * 1e-6
+	if p := price.GetLLMInfoPrice(m.GroupID); p != nil {
+		m.APIKeyStats.InputCost = float64(u.InputTokens) * p.Input * 1e-6
+		m.APIKeyStats.OutputCost = float64(u.OutputTokens) * p.Output * 1e-6
+	}
 }
 
 func (m *imagesRelayMetrics) Save(ctx context.Context, success bool, err error, attempts []model.ChannelAttempt) {
 	duration := time.Since(m.StartTime)
 
-	globalStats := model.StatsMetrics{
-		WaitTime:    duration.Milliseconds(),
-		InputToken:  m.Stats.InputToken,
-		OutputToken: m.Stats.OutputToken,
-		InputCost:   m.Stats.InputCost,
-		OutputCost:  m.Stats.OutputCost,
-	}
+	channelMetrics := m.Stats
+	apiKeyMetrics := m.APIKeyStats
 	if success {
-		globalStats.RequestSuccess = 1
+		channelMetrics.RequestSuccess = 1
+		apiKeyMetrics.RequestSuccess = 1
 	} else {
-		globalStats.RequestFailed = 1
+		channelMetrics.RequestFailed = 1
+		apiKeyMetrics.RequestFailed = 1
 	}
 
 	channelID, channelName := finalChannel(attempts)
-	op.StatsTotalUpdate(globalStats)
-	op.StatsHourlyUpdate(globalStats)
-	op.StatsDailyUpdate(context.Background(), globalStats)
-	op.StatsAPIKeyUpdate(m.APIKeyID, globalStats)
-	op.StatsChannelUpdate(channelID, globalStats)
 
-	log.Infof("images relay complete: model=%s, channel=%d(%s), success=%t, duration=%dms, input_token=%d, output_token=%d, input_cost=%f, output_cost=%f, used_cost=%f, attempts=%d",
+	// 密钥收入侧（售价）
+	op.StatsTotalUpdate(apiKeyMetrics)
+	op.StatsHourlyUpdate(apiKeyMetrics)
+	op.StatsDailyUpdate(context.Background(), apiKeyMetrics)
+	op.StatsAPIKeyUpdate(m.APIKeyID, apiKeyMetrics)
+	if m.GroupID > 0 {
+		op.StatsModelUpdate(model.StatsModel{GroupID: m.GroupID, StatsMetrics: apiKeyMetrics})
+	}
+
+	// 渠道成本侧（进价）
+	op.StatsChannelUpdate(channelID, channelMetrics)
+
+	log.Infof("images relay complete: model=%s, channel=%d(%s), success=%t, duration=%dms, input_token=%d, output_token=%d, channel_cost=%f, apikey_revenue=%f, attempts=%d",
 		m.RequestModel, channelID, channelName, success, duration.Milliseconds(),
 		m.Stats.InputToken, m.Stats.OutputToken,
-		m.Stats.InputCost, m.Stats.OutputCost, m.Stats.InputCost+m.Stats.OutputCost,
-		len(attempts))
+		channelMetrics.Total(), apiKeyMetrics.Total(), len(attempts))
+
+	if revErr := op.APIKeyIncRevenue(m.APIKeyID, apiKeyMetrics.Total()); revErr != nil {
+		log.Warnf("failed to update api key revenue: %v", revErr)
+	}
 
 	m.saveLog(ctx, err, duration, attempts, channelID, channelName)
 }
@@ -341,6 +374,7 @@ func (m *imagesRelayMetrics) saveLog(ctx context.Context, err error, duration ti
 	}
 
 	relayLog := model.RelayLog{
+		ID:               m.ProgressID,
 		Time:             m.StartTime.Unix(),
 		RequestModelName: m.RequestModel,
 		ChannelName:      channelName,
@@ -362,12 +396,16 @@ func (m *imagesRelayMetrics) saveLog(ctx context.Context, err error, duration ti
 		relayLog.Ftut = int(m.FirstToken.Sub(m.StartTime).Milliseconds())
 	}
 
-	// Usage
-	if m.Stats.InputToken > 0 || m.Stats.OutputToken > 0 {
-		relayLog.InputTokens = int(m.Stats.InputToken)
-		relayLog.OutputTokens = int(m.Stats.OutputToken)
-		relayLog.Cost = m.Stats.InputCost + m.Stats.OutputCost
-	}
+	// Usage 与 8 维成本（渠道进价 + 密钥售价）
+	relayLog.InputTokens = int(m.Stats.InputToken)
+	relayLog.OutputTokens = int(m.Stats.OutputToken)
+	relayLog.ChannelInputCost = m.Stats.InputCost
+	relayLog.ChannelOutputCost = m.Stats.OutputCost
+	relayLog.APIKeyInputCost = m.APIKeyStats.InputCost
+	relayLog.APIKeyOutputCost = m.APIKeyStats.OutputCost
+
+	// 生成速率
+	relayLog.Tps = computeTPS(m.Stats.OutputToken, relayLog.UseTime, relayLog.Ftut)
 
 	if err != nil {
 		relayLog.Error = err.Error()

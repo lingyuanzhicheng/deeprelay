@@ -13,6 +13,7 @@ import (
 	"github.com/lingyuanzhicheng/deeprelay/internal/price"
 	transformerModel "github.com/lingyuanzhicheng/deeprelay/internal/transformer/model"
 	"github.com/lingyuanzhicheng/deeprelay/internal/utils/log"
+	"github.com/lingyuanzhicheng/deeprelay/internal/utils/snowflake"
 )
 
 // RelayMetrics 负责最终的日志收集与持久化
@@ -30,26 +31,52 @@ type RelayMetrics struct {
 
 	// 统计指标
 	ActualModel string
-	Stats       model.StatsMetrics
+	GroupID     int
+
+	// Stats token 计数 + 渠道进价成本（channel_llm_prices）
+	Stats model.StatsMetrics
+	// APIKeyStats 密钥售价收入（llminfo 价格），token 计数与 Stats 相同
+	APIKeyStats model.StatsMetrics
 
 	// 参数覆盖
 	ParamOverride string
 
 	// ChannelID 用于按渠道查价（成本计算的渠道维度）
 	ChannelID int
+
+	// ProgressID 进行中日志的预生成 ID：pending/streaming 进度事件与最终落库日志共用
+	ProgressID int64
 }
 
-func NewRelayMetrics(apiKeyID int, requestModel string, req *transformerModel.InternalLLMRequest) *RelayMetrics {
+func NewRelayMetrics(apiKeyID int, requestModel string, req *transformerModel.InternalLLMRequest, groupID int) *RelayMetrics {
 	return &RelayMetrics{
 		APIKeyID:        apiKeyID,
 		RequestModel:    requestModel,
 		StartTime:       time.Now(),
 		InternalRequest: req,
+		GroupID:         groupID,
+		ProgressID:      snowflake.GenerateID(),
 	}
 }
 
 func (m *RelayMetrics) SetFirstTokenTime(t time.Time) {
 	m.FirstTokenTime = t
+}
+
+// NotifyProgress 将进行中日志的进度事件推送给 SSE 订阅者
+// status: pending=请求中, streaming=传输中
+func (m *RelayMetrics) NotifyProgress(status string) {
+	relayLog := model.RelayLog{
+		ID:               m.ProgressID,
+		Time:             m.StartTime.Unix(),
+		RequestModelName: m.RequestModel,
+		Status:           status,
+		RequestContent:   m.requestContentForLog(),
+	}
+	if apiKey, getErr := op.APIKeyGet(m.APIKeyID, context.Background()); getErr == nil {
+		relayLog.RequestAPIKeyName = apiKey.Name
+	}
+	op.RelayLogNotify(relayLog)
 }
 
 func (m *RelayMetrics) SetInternalResponse(resp *transformerModel.InternalLLMResponse, actualModel string, channelID int) {
@@ -61,57 +88,45 @@ func (m *RelayMetrics) SetInternalResponse(resp *transformerModel.InternalLLMRes
 		return
 	}
 
-	usage := resp.Usage
-	m.Stats.InputToken = usage.PromptTokens
-	m.Stats.OutputToken = usage.CompletionTokens
-
-	modelPrice := price.GetChannelLLMPrice(m.ChannelID, actualModel)
-	if modelPrice == nil {
-		return
-	}
-	if usage.PromptTokensDetails == nil {
-		usage.PromptTokensDetails = &transformerModel.PromptTokensDetails{
-			CachedTokens: 0,
-		}
-	}
-	if usage.AnthropicUsage {
-		m.Stats.InputCost = (float64(usage.PromptTokensDetails.CachedTokens)*modelPrice.CacheRead +
-			float64(usage.PromptTokens)*modelPrice.Input +
-			float64(usage.CacheCreationInputTokens)*modelPrice.CacheWrite) * 1e-6
-	} else {
-		m.Stats.InputCost = (float64(usage.PromptTokensDetails.CachedTokens)*modelPrice.CacheRead + float64(usage.PromptTokens-usage.PromptTokensDetails.CachedTokens)*modelPrice.Input) * 1e-6
-	}
-	m.Stats.OutputCost = float64(usage.CompletionTokens) * modelPrice.Output * 1e-6
+	m.Stats = computeUsageMetrics(resp.Usage, price.GetChannelLLMPrice(channelID, actualModel))
+	m.APIKeyStats = computeUsageMetrics(resp.Usage, price.GetLLMInfoPrice(m.GroupID))
 }
 
 func (m *RelayMetrics) Save(ctx context.Context, success bool, err error, attempts []model.ChannelAttempt) {
 	duration := time.Since(m.StartTime)
 
-	globalStats := model.StatsMetrics{
-		WaitTime:    duration.Milliseconds(),
-		InputToken:  m.Stats.InputToken,
-		OutputToken: m.Stats.OutputToken,
-		InputCost:   m.Stats.InputCost,
-		OutputCost:  m.Stats.OutputCost,
-	}
+	channelMetrics := m.Stats
+	apiKeyMetrics := m.APIKeyStats
 	if success {
-		globalStats.RequestSuccess = 1
+		channelMetrics.RequestSuccess = 1
+		apiKeyMetrics.RequestSuccess = 1
 	} else {
-		globalStats.RequestFailed = 1
+		channelMetrics.RequestFailed = 1
+		apiKeyMetrics.RequestFailed = 1
 	}
 
 	channelID, channelName := finalChannel(attempts)
-	op.StatsTotalUpdate(globalStats)
-	op.StatsHourlyUpdate(globalStats)
-	op.StatsDailyUpdate(context.Background(), globalStats)
-	op.StatsAPIKeyUpdate(m.APIKeyID, globalStats)
-	op.StatsChannelUpdate(channelID, globalStats)
 
-	log.Infof("relay complete: model=%s, channel=%d(%s), success=%t, duration=%dms, input_token=%d, output_token=%d, input_cost=%f, output_cost=%f, used_cost=%f, attempts=%d",
+	// 密钥收入侧（售价）
+	op.StatsTotalUpdate(apiKeyMetrics)
+	op.StatsHourlyUpdate(apiKeyMetrics)
+	op.StatsDailyUpdate(context.Background(), apiKeyMetrics)
+	op.StatsAPIKeyUpdate(m.APIKeyID, apiKeyMetrics)
+	if m.GroupID > 0 {
+		op.StatsModelUpdate(model.StatsModel{GroupID: m.GroupID, StatsMetrics: apiKeyMetrics})
+	}
+
+	// 渠道成本侧（进价）
+	op.StatsChannelUpdate(channelID, channelMetrics)
+
+	log.Infof("relay complete: model=%s, channel=%d(%s), success=%t, duration=%dms, input_token=%d, output_token=%d, channel_cost=%f, apikey_revenue=%f, attempts=%d",
 		m.RequestModel, channelID, channelName, success, duration.Milliseconds(),
 		m.Stats.InputToken, m.Stats.OutputToken,
-		m.Stats.InputCost, m.Stats.OutputCost, m.Stats.InputCost+m.Stats.OutputCost,
-		len(attempts))
+		channelMetrics.Total(), apiKeyMetrics.Total(), len(attempts))
+
+	if revErr := op.APIKeyIncRevenue(m.APIKeyID, apiKeyMetrics.Total()); revErr != nil {
+		log.Warnf("failed to update api key revenue: %v", revErr)
+	}
 
 	m.saveLog(ctx, err, duration, attempts, channelID, channelName)
 }
@@ -139,6 +154,7 @@ func (m *RelayMetrics) saveLog(ctx context.Context, err error, duration time.Dur
 	}
 
 	relayLog := model.RelayLog{
+		ID:               m.ProgressID,
 		Time:             m.StartTime.Unix(),
 		RequestModelName: m.RequestModel,
 		ChannelName:      channelName,
@@ -158,39 +174,24 @@ func (m *RelayMetrics) saveLog(ctx context.Context, err error, duration time.Dur
 		relayLog.Ftut = int(m.FirstTokenTime.Sub(m.StartTime).Milliseconds())
 	}
 
-	// Usage
-	if m.InternalResponse != nil && m.InternalResponse.Usage != nil {
-		relayLog.InputTokens = int(m.InternalResponse.Usage.PromptTokens)
-		relayLog.OutputTokens = int(m.InternalResponse.Usage.CompletionTokens)
-		relayLog.Cost = m.Stats.InputCost + m.Stats.OutputCost
-	}
+	// Usage 与 8 维成本（渠道进价 + 密钥售价）
+	relayLog.InputTokens = int(m.Stats.InputToken)
+	relayLog.CacheReadTokens = int(m.Stats.CacheReadToken)
+	relayLog.CacheWriteTokens = int(m.Stats.CacheWriteToken)
+	relayLog.OutputTokens = int(m.Stats.OutputToken)
+	relayLog.ChannelInputCost = m.Stats.InputCost
+	relayLog.ChannelCacheReadCost = m.Stats.CacheReadCost
+	relayLog.ChannelCacheWriteCost = m.Stats.CacheWriteCost
+	relayLog.ChannelOutputCost = m.Stats.OutputCost
+	relayLog.APIKeyInputCost = m.APIKeyStats.InputCost
+	relayLog.APIKeyCacheReadCost = m.APIKeyStats.CacheReadCost
+	relayLog.APIKeyCacheWriteCost = m.APIKeyStats.CacheWriteCost
+	relayLog.APIKeyOutputCost = m.APIKeyStats.OutputCost
 
-	// 请求内容
-	if m.InternalRequest != nil {
-		reqJSON, jsonErr := json.Marshal(m.InternalRequest)
-		if jsonErr != nil {
-			relayLog.RequestContent = string(reqJSON)
-		} else if m.ParamOverride == "" {
-			relayLog.RequestContent = string(reqJSON)
-		} else {
-			var reqMap map[string]any
-			if err := json.Unmarshal(reqJSON, &reqMap); err != nil {
-				relayLog.RequestContent = string(reqJSON)
-			} else {
-				var override map[string]any
-				if err := json.Unmarshal([]byte(m.ParamOverride), &override); err != nil {
-					relayLog.RequestContent = string(reqJSON)
-				} else {
-					maps.Copy(reqMap, override)
-					if finalJSON, err := json.Marshal(reqMap); err != nil {
-						relayLog.RequestContent = string(reqJSON)
-					} else {
-						relayLog.RequestContent = string(finalJSON)
-					}
-				}
-			}
-		}
-	}
+	// 生成速率
+	relayLog.Tps = computeTPS(m.Stats.OutputToken, relayLog.UseTime, relayLog.Ftut)
+
+	relayLog.RequestContent = m.requestContentForLog()
 
 	// 响应内容
 	if m.InternalResponse != nil {
@@ -258,4 +259,32 @@ func (m *RelayMetrics) filterResponseForLog(resp *transformerModel.InternalLLMRe
 		filtered.Choices[i].Delta = filterMsg(choice.Delta)
 	}
 	return &filtered
+}
+
+// requestContentForLog 构建请求内容 JSON（应用 ParamOverride 后的最终请求体）
+func (m *RelayMetrics) requestContentForLog() string {
+	if m.InternalRequest == nil {
+		return ""
+	}
+	reqJSON, jsonErr := json.Marshal(m.InternalRequest)
+	if jsonErr != nil {
+		return fmt.Sprintf(`{"error":"marshal request failed: %s"}`, jsonErr)
+	}
+	if m.ParamOverride == "" {
+		return string(reqJSON)
+	}
+	var reqMap map[string]any
+	if err := json.Unmarshal(reqJSON, &reqMap); err != nil {
+		return string(reqJSON)
+	}
+	var override map[string]any
+	if err := json.Unmarshal([]byte(m.ParamOverride), &override); err != nil {
+		return string(reqJSON)
+	}
+	maps.Copy(reqMap, override)
+	finalJSON, err := json.Marshal(reqMap)
+	if err != nil {
+		return string(reqJSON)
+	}
+	return string(finalJSON)
 }

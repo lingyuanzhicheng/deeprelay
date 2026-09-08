@@ -28,11 +28,11 @@
         "requestCount": "Requests",
         "timeConsumed": "Time Consumed",
         "totalToken": "Tokens Used",
-        "totalCost": "Total Cost",
+        "totalCost": "Credits Used",
         "inputTokens": "Input Tokens",
-        "inputCost": "Input Cost",
+        "inputCost": "Input Credits",
         "outputTokens": "Output Tokens",
-        "outputCost": "Output Cost",
+        "outputCost": "Output Credits",
         "successRequests": "Successful",
         "failedRequests": "Failed",
         "quota": "Remaining Quota",
@@ -41,7 +41,14 @@
         "neverExpire": "Never",
         "daysLeft": "days left",
         "expired": "Expired",
-        "supportedModels": "Supported Models"
+        "supportedModels": "Supported Models",
+        "creditsBalance": "Credits Balance",
+        "successRate": "Success Rate",
+        "cacheWriteTokens": "Cache Write Tokens",
+        "cacheReadTokens": "Cache Read Tokens",
+        "cacheWriteCredits": "Cache Write Credits",
+        "cacheReadCredits": "Cache Read Credits",
+        "cancel": "Cancel"
     },
     "navbar": {
         "home": "Home",
@@ -49,8 +56,10 @@
         "group": "Group",
         "key": "Key",
         "model": "Price",
+        "apikey": "Keys",
         "log": "Log",
-        "setting": "Setting"
+        "setting": "Setting",
+        "llminfo": "Model"
     },
     "toolbar": {
         "popover": {
@@ -93,7 +102,17 @@
             "waitTime": "Wait Time",
             "totalToken": "Tokens Used",
             "totalCost": "Total Cost",
-            "noData": "No Data"
+            "noData": "No Data",
+            "success": "Success",
+            "failed": "Failed",
+            "inputToken": "Input Tokens",
+            "outputToken": "Output Tokens",
+            "cacheWriteToken": "Cache Write Tokens",
+            "cacheReadToken": "Cache Read Tokens",
+            "inputCost": "Input Cost",
+            "outputCost": "Output Cost",
+            "cacheWriteCost": "Cache Write Cost",
+            "cacheReadCost": "Cache Read Cost"
         },
         "total": {
             "requestStats": "Request Stats",
@@ -107,10 +126,33 @@
             "inputTokens": "Input Tokens",
             "inputCost": "Input Cost",
             "outputTokens": "Output Tokens",
-            "outputCost": "Output Cost"
+            "outputCost": "Output Cost",
+            "section_realtime": "Realtime",
+            "section_consumption": "Today's Cost",
+            "section_stability": "Today's Status",
+            "section_requests": "Today's Requests",
+            "section_input": "Today's Input",
+            "section_output": "Today's Output",
+            "section_cacheRead": "Cache Read",
+            "section_cacheWrite": "Cache Write",
+            "realtime_rpm": "RPM",
+            "realtime_tpm": "TPM",
+            "consumption_token": "Total Tokens",
+            "consumption_cost": "Total Cost",
+            "stability_successRate": "Success Rate",
+            "stability_cacheHitRate": "Cache Hit Rate",
+            "requests_success": "Successful",
+            "requests_failed": "Failed",
+            "input_token": "Input Tokens",
+            "input_cost": "Input Cost",
+            "output_token": "Output Tokens",
+            "output_cost": "Output Cost",
+            "cacheRead_token": "Read Tokens",
+            "cacheRead_cost": "Read Cost",
+            "cacheWrite_token": "Write Tokens",
+            "cacheWrite_cost": "Write Cost"
         },
         "chart": {
-            "title": "Trend",
             "totalRequests": "Total Requests",
             "totalCost": "Total Cost",
             "totalTokens": "Total Tokens",
@@ -124,7 +166,13 @@
                 "today": "Today",
                 "last7Days": "7 Days",
                 "last30Days": "30 Days"
-            }
+            },
+            "success": "Success",
+            "failed": "Failed",
+            "input": "Input",
+            "output": "Output",
+            "cacheWrite": "Cache Write",
+            "cacheRead": "Cache Read"
         },
         "rank": {
             "title": "Ranking",
@@ -133,6 +181,69 @@
             "sortByTokens": "Tokens",
             "noData": "No ranking data",
             "successRate": "Success Rate"
+        },
+        "summary": {
+            "section_input": "Input Stats",
+            "section_output": "Output Stats",
+            "section_cacheRead": "Cache Read",
+            "section_cacheWrite": "Cache Write",
+            "section_breaker": "Circuit Breaker",
+            "breaker_healthRate": "Breaker Health",
+            "section_status": "Status",
+            "section_requests": "Requests",
+            "breaker_broken": "Broken Triplets"
+        }
+    },
+    "apiKeyItem": {
+        "requestCount": "Requests",
+        "models": "Models",
+        "successRequests": "Success",
+        "failedRequests": "Failed",
+        "balance": "Balance",
+        "expireAt": "Expires",
+        "neverExpire": "Never expires",
+        "unlimited": "Unlimited",
+        "totalToken": "Total Tokens"
+    },
+    "apiKeyDetail": {
+        "title": {
+            "view": "Key Details",
+            "edit": "Edit Key"
+        },
+        "metrics": {
+            "totalRequests": "Total Requests",
+            "totalToken": "Total Tokens",
+            "totalCost": "Total Cost",
+            "balance": "Balance",
+            "expireAt": "Expires",
+            "successRequests": "Successful Requests",
+            "failedRequests": "Failed Requests",
+            "inputToken": "Input Tokens",
+            "outputToken": "Output Tokens",
+            "inputCost": "Input Cost",
+            "outputCost": "Output Cost",
+            "noStats": "No statistics yet",
+            "cacheReadToken": "Cache Read Tokens",
+            "cacheWriteToken": "Cache Write Tokens",
+            "cacheReadCost": "Cache Read Spend",
+            "cacheWriteCost": "Cache Write Spend"
+        },
+        "sections": {
+            "requests": "Requests",
+            "tokens": "Tokens",
+            "costs": "Costs",
+            "apiKeyValue": "API Key"
+        },
+        "neverExpire": "Never expires",
+        "unlimited": "Unlimited",
+        "actions": {
+            "edit": "Edit",
+            "save": "Save",
+            "delete": "Delete",
+            "cancel": "Cancel",
+            "confirmDelete": "Confirm Delete",
+            "deleting": "Deleting...",
+            "saving": "Saving..."
         }
     },
     "setting": {
@@ -202,13 +313,13 @@
             }
         },
         "apiKey": {
-            "title": "API Keys",
+            "title": "Keys",
             "empty": "No API keys",
             "add": "Add Key",
             "loadFailed": "Failed to load",
             "form": {
                 "name": "Name",
-                "maxCost": "Max Cost",
+                "maxCost": "Balance",
                 "maxCostPlaceholder": "Enter amount",
                 "unlimited": "Unlimited",
                 "expireAt": "Expire Date",
@@ -216,12 +327,18 @@
                 "neverExpire": "Never Expire",
                 "supportedModels": "Supported Models",
                 "noModels": "No models available",
-                "modelsHint": "Leave empty for unlimited",
                 "enabled": "Enabled",
                 "cancel": "Cancel",
                 "create": "Create",
                 "save": "Save",
-                "confirm": "Confirm"
+                "confirm": "Confirm",
+                "apiKeyValue": "API Key Value",
+                "resetKey": "Reset",
+                "resetConfirm": "Are you sure you want to reset this API key? The old key will be invalidated immediately.",
+                "modelUnlimited": "Model Unlimited",
+                "routingModel": "Routing Model",
+                "selectGroup": "Select group",
+                "disabled": "Disabled"
             },
             "stats": {
                 "noData": "No statistics available",
@@ -238,7 +355,11 @@
                 "updateSuccess": "API key updated",
                 "updateError": "Failed to update API key",
                 "deleteSuccess": "API key deleted",
-                "deleteError": "Failed to delete API key"
+                "deleteError": "Failed to delete API key",
+                "enabled": "Enabled",
+                "disabled": "Disabled",
+                "resetSuccess": "API key reset",
+                "resetError": "Failed to reset API key"
             }
         },
         "llmPrice": {
@@ -272,31 +393,6 @@
             "neverSynced": "Never synced",
             "syncSuccess": "Channel synced successfully",
             "syncFailed": "Failed to sync channel"
-        },
-        "account": {
-            "title": "Account Settings",
-            "save": "Save",
-            "saving": "Saving...",
-            "username": {
-                "label": "Change Username",
-                "placeholder": "Enter new username",
-                "empty": "Username cannot be empty",
-                "success": "Username changed successfully",
-                "failed": "Failed to change username"
-            },
-            "password": {
-                "label": "Change Password",
-                "oldPlaceholder": "Enter current password",
-                "newPlaceholder": "Enter new password",
-                "confirmPlaceholder": "Confirm new password",
-                "oldEmpty": "Please enter current password",
-                "newEmpty": "Please enter new password",
-                "mismatch": "Passwords do not match",
-                "tooShort": "Password must be at least 6 characters",
-                "change": "Change Password",
-                "success": "Password changed successfully",
-                "failed": "Failed to change password"
-            }
         },
         "info": {
             "title": "Version Info",
@@ -332,6 +428,41 @@
             },
             "clearSuccess": "Logs cleared",
             "clearFailed": "Failed to clear logs"
+        },
+        "copySuccess": "Copied",
+        "account": {
+            "title": "Account Settings",
+            "save": "Save",
+            "saving": "Saving...",
+            "username": {
+                "label": "Change Username",
+                "placeholder": "Enter new username",
+                "empty": "Username cannot be empty",
+                "success": "Username changed successfully",
+                "failed": "Failed to change username"
+            },
+            "password": {
+                "label": "Change Password",
+                "oldPlaceholder": "Enter current password",
+                "newPlaceholder": "Enter new password",
+                "confirmPlaceholder": "Confirm new password",
+                "oldEmpty": "Please enter current password",
+                "newEmpty": "Please enter new password",
+                "mismatch": "Passwords do not match",
+                "tooShort": "Password must be at least 6 characters",
+                "change": "Change Password",
+                "success": "Password changed successfully",
+                "failed": "Failed to change password"
+            }
+        },
+        "keyAccount": {
+            "title": "Account",
+            "showKeyValue": "Key Value",
+            "resetKey": "Reset Key",
+            "resetConfirm": "Are you sure you want to reset the key? The old key will be invalidated immediately.",
+            "resetSuccess": "Key reset. Save your new key safely",
+            "resetInvalidated": "The old key has been invalidated. Copy and save the new key, then log in with it.",
+            "reset": "Reset"
         }
     },
     "group": {
@@ -402,6 +533,8 @@
             "selectAll": "Select all",
             "selectHint": "Select models to batch-match",
             "empty": "No models found",
+            "noMatch": "No matching models",
+            "filter": "Search models",
             "unbound": "Unbound",
             "batchAutoMatch": "Batch Auto Match",
             "syncModelsDev": "Sync models.dev",
@@ -414,6 +547,7 @@
         },
         "overlay": {
             "cancel": "Cancel",
+            "back": "Back",
             "input": "Input",
             "output": "Output",
             "cacheRead": "Cache Read",
@@ -428,6 +562,7 @@
             "autoFilled": "Auto-filled from models.dev"
         },
         "toast": {
+            "invalidPrice": "Prices must be non-negative numbers",
             "priceUpdated": "Price updated",
             "updateFailed": "Update failed",
             "synced": "Prices synced from models.dev",
@@ -441,7 +576,12 @@
             "autoMatchFailed": "Auto match failed",
             "matchedCount": "{count} models matched",
             "batchUnbound": "Unbound {count} models",
-            "batchReset": "Reset {count} models"
+            "batchUnboundFailed": "{count} unbind failed",
+            "batchReset": "Reset {count} models",
+            "batchResetFailed": "{count} reset failed",
+            "cacheNotReady": "models.dev cache not ready",
+            "cacheNotReadyHint": "Please go to Settings and sync models.dev first.",
+            "goToSetting": "Go to Settings"
         },
         "edit": {
             "custom": "Custom Price",
@@ -449,6 +589,13 @@
         }
     },
     "log": {
+        "toolbar": {
+            "refresh": "Live refresh",
+            "filter": "Time filter",
+            "startDate": "Start date",
+            "endDate": "End date",
+            "clear": "Clear filter"
+        },
         "list": {
             "noMore": "No more logs"
         },
@@ -457,9 +604,14 @@
             "errorInfo": "Error Info",
             "firstToken": "TTFT",
             "totalTime": "Total",
+            "tps": "TPS",
             "input": "Input",
             "output": "Output",
+            "cacheWrite": "Cache Write",
+            "cacheRead": "Cache Read",
             "cost": "Cost",
+            "channelCost": "Channel Cost",
+            "apikeyCost": "API Key Cost",
             "requestContent": "Request Content",
             "responseContent": "Response Content",
             "noRequestContent": "(No request content)",
@@ -469,17 +621,21 @@
             "retryDetails": "Retry Details",
             "attempts": "attempts",
             "success": "Success",
-            "failed": "Failed"
+            "failed": "Failed",
+            "statusPending": "Requesting",
+            "statusStreaming": "Streaming",
+            "responsePending": "(Response streaming...)"
         }
     },
     "channel": {
         "card": {
             "requestCount": "Requests",
-            "totalCost": "Total Cost",
+            "totalCost": "Cost",
             "toast": {
                 "enabled": "Channel enabled",
                 "disabled": "Channel disabled"
-            }
+            },
+            "totalToken": "Total Tokens"
         },
         "detail": {
             "title": {
@@ -498,14 +654,19 @@
             "metrics": {
                 "totalRequests": "Total Requests",
                 "totalToken": "Total Tokens",
-                "totalCost": "Total Cost",
+                "totalCost": "Cost",
                 "successRequests": "Successful Requests",
                 "failedRequests": "Failed Requests",
                 "inputToken": "Input Tokens",
                 "outputToken": "Output Tokens",
                 "inputCost": "Input Cost",
                 "outputCost": "Output Cost",
-                "avgWaitTime": "Wait Time"
+                "avgWaitTime": "Wait Time",
+                "cacheReadToken": "Cache Read Tokens",
+                "cacheWriteToken": "Cache Write Tokens",
+                "cacheReadCost": "Cache Read Cost",
+                "cacheWriteCost": "Cache Write Cost",
+                "successRate": "Success Rate"
             },
             "actions": {
                 "edit": "Edit",
@@ -605,6 +766,94 @@
             "periodStart": "Start Time",
             "usedCost": "Used Cost",
             "resetCost": "Reset Cost"
+        }
+    },
+    "llminfo": {
+        "card": {
+            "copy": "Copy model name",
+            "info": "Details",
+            "edit": "Edit",
+            "inputCache": "Input/Cache",
+            "outputCache": "Output/Cache"
+        },
+        "info": {
+            "request": "Request Details",
+            "stats": "Stats",
+            "price": "Price (coins/M tokens)",
+            "instruction": "Description",
+            "endpoint": "Endpoint",
+            "contextLimit": "Context Limit",
+            "outputLimit": "Output Limit",
+            "inputType": "Input Type",
+            "outputType": "Output Type",
+            "inputPrice": "Input",
+            "outputPrice": "Output",
+            "cacheReadPrice": "Cache Read",
+            "cacheWritePrice": "Cache Write",
+            "requestCount": "Request Count",
+            "totalToken": "Total Tokens",
+            "tools": "Tool Calling",
+            "reasoning": "Reasoning",
+            "structured": "Structured Output",
+            "temperature": "Temperature",
+            "successRequests": "Successful Requests",
+            "failedRequests": "Failed Requests",
+            "successRate": "Success Rate",
+            "totalFunding": "Total Credit Flow",
+            "inputToken": "Input Tokens",
+            "outputToken": "Output Tokens",
+            "cacheReadToken": "Cache Read Tokens",
+            "cacheWriteToken": "Cache Write Tokens",
+            "inputFunding": "Input Credit Flow",
+            "outputFunding": "Output Credit Flow",
+            "cacheReadFunding": "Cache Read Credit Flow",
+            "cacheWriteFunding": "Cache Write Credit Flow",
+            "totalRequests": "Total Requests"
+        },
+        "edit": {
+            "title": "Edit Model Info",
+            "endpoint": "Endpoint",
+            "contextLimit": "Context Limit",
+            "outputLimit": "Output Limit",
+            "inputType": "Input Type",
+            "outputType": "Output Type",
+            "tools": "Tool Calling",
+            "reasoning": "Reasoning",
+            "structured": "Structured Output",
+            "temperature": "Temperature",
+            "inputPrice": "Input Price",
+            "outputPrice": "Output Price",
+            "cacheReadPrice": "Cache Read Price",
+            "cacheWritePrice": "Cache Write Price",
+            "instruction": "Description",
+            "cancel": "Cancel",
+            "save": "Save",
+            "name": "Model Name",
+            "vendor": "Vendor",
+            "series": "Series",
+            "capabilitiesSection": "Capabilities"
+        },
+        "toast": {
+            "copied": "Copied",
+            "copyFailed": "Copy failed",
+            "updated": "Updated",
+            "updateFailed": "Update failed",
+            "invalidPrice": "Invalid price format"
+        },
+        "title": {
+            "stats": "Model Stats",
+            "detail": "Model Details",
+            "edit": "Edit Model"
+        },
+        "actions": {
+            "stats": "Stats",
+            "detail": "Details",
+            "edit": "Edit",
+            "saving": "Saving…",
+            "close": "Close"
+        },
+        "sections": {
+            "funding": "Credit Flow Breakdown"
         }
     }
 }

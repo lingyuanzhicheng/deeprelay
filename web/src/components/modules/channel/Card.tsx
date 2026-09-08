@@ -4,7 +4,7 @@ import {
     MorphingDialogContainer,
     MorphingDialogContent,
 } from '@/components/ui/morphing-dialog';
-import { CheckCircle2, DollarSign, Key, Layers, MessageSquare, XCircle } from 'lucide-react';
+import { CheckCircle2, DollarSign, Key, Layers, MessageSquare, Hash } from 'lucide-react';
 import { type StatsMetricsFormatted } from '@/api/endpoints/stats';
 import { type Channel, useEnableChannel } from '@/api/endpoints/channel';
 import { CardContent } from './CardContent';
@@ -80,6 +80,39 @@ export function Card({ channel, stats, layout = 'grid' }: { channel: Channel; st
                             </div>
                             <div className="rounded-2xl border border-border/70 bg-background/80 p-2">
                                 <dt className="mb-1 flex items-center gap-1 text-xs text-muted-foreground">
+                                    <Hash className="size-3.5 text-primary" />
+                                    {t('totalToken')}
+                                </dt>
+                                <dd className="text-sm font-semibold">
+                                    {stats.total_token.formatted.value}
+                                    <span className="ml-1 text-xs text-muted-foreground">{stats.total_token.formatted.unit}</span>
+                                </dd>
+                            </div>
+                            <div className="rounded-2xl border border-border/70 bg-background/80 p-2">
+                                <dt className="mb-1 flex items-center gap-1 text-xs text-muted-foreground">
+                                    <DollarSign className="size-3.5 text-primary" />
+                                    {t('totalCost')}
+                                </dt>
+                                <dd className="text-sm font-semibold">
+                                    {stats.total_cost.formatted.value}
+                                    <span className="ml-1 text-xs text-muted-foreground">{stats.total_cost.formatted.unit}</span>
+                                </dd>
+                            </div>
+                            <div className="rounded-2xl border border-border/70 bg-background/80 p-2">
+                                <dt className="mb-1 flex items-center gap-1 text-xs text-muted-foreground">
+                                    <CheckCircle2 className="size-3.5 text-blue-500" />
+                                    {tMetrics('successRate')}
+                                </dt>
+                                <dd className="text-sm font-semibold">
+                                    {(() => {
+                                        const total = stats.request_success.raw + stats.request_failed.raw;
+                                        if (total <= 0) return '—';
+                                        return `${((stats.request_success.raw / total) * 100).toFixed(1)}%`;
+                                    })()}
+                                </dd>
+                            </div>
+                            <div className="rounded-2xl border border-border/70 bg-background/80 p-2">
+                                <dt className="mb-1 flex items-center gap-1 text-xs text-muted-foreground">
                                     <Layers className="size-3.5 text-primary" />
                                     {tForm('model')}
                                 </dt>
@@ -91,30 +124,6 @@ export function Card({ channel, stats, layout = 'grid' }: { channel: Channel; st
                                     {tSections('keys')}
                                 </dt>
                                 <dd className="text-sm font-semibold">{enabledKeyCount}/{channel.keys.length}</dd>
-                            </div>
-                            <div className="rounded-2xl border border-border/70 bg-background/80 p-2">
-                                <dt className="mb-1 flex items-center gap-1 text-xs text-muted-foreground">
-                                    <CheckCircle2 className="size-3.5 text-blue-500" />
-                                    {tMetrics('successRequests')}
-                                </dt>
-                                <dd className="text-sm font-semibold">{stats.request_success.formatted.value}</dd>
-                            </div>
-                            <div className="rounded-2xl border border-border/70 bg-background/80 p-2">
-                                <dt className="mb-1 flex items-center gap-1 text-xs text-muted-foreground">
-                                    <XCircle className="size-3.5 text-destructive" />
-                                    {tMetrics('failedRequests')}
-                                </dt>
-                                <dd className="text-sm font-semibold">{stats.request_failed.formatted.value}</dd>
-                            </div>
-                            <div className="rounded-2xl border border-border/70 bg-background/80 p-2">
-                                <dt className="mb-1 flex items-center gap-1 text-xs text-muted-foreground">
-                                    <DollarSign className="size-3.5 text-primary" />
-                                    {t('totalCost')}
-                                </dt>
-                                <dd className="text-sm font-semibold">
-                                    {stats.total_cost.formatted.value}
-                                    <span className="ml-1 text-xs text-muted-foreground">{stats.total_cost.formatted.unit}</span>
-                                </dd>
                             </div>
                         </dl>
                     ) : (
@@ -129,6 +138,19 @@ export function Card({ channel, stats, layout = 'grid' }: { channel: Channel; st
                                 <dd className="text-base">
                                     {stats.request_count.formatted.value}
                                     <span className="ml-1 text-xs text-muted-foreground">{stats.request_count.formatted.unit}</span>
+                                </dd>
+                            </div>
+
+                            <div className="flex items-center justify-between rounded-2xl border border-border/70 bg-background/80 p-2">
+                                <div className="flex items-center gap-3">
+                                    <span className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                                        <Hash className="h-5 w-5" />
+                                    </span>
+                                    <dt className="text-sm text-muted-foreground">{t('totalToken')}</dt>
+                                </div>
+                                <dd className="text-base">
+                                    {stats.total_token.formatted.value}
+                                    <span className="ml-1 text-xs text-muted-foreground">{stats.total_token.formatted.unit}</span>
                                 </dd>
                             </div>
 

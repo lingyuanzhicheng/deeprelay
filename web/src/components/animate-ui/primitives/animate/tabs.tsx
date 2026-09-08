@@ -11,6 +11,7 @@ import {
 } from '@/components/animate-ui/primitives/effects/highlight';
 import { getStrictContext } from '@/lib/get-strict-context';
 import { Slot, type WithAsChild } from '@/components/animate-ui/primitives/animate/slot';
+import { cn } from '@/lib/utils';
 
 type TabsContextType = {
   activeValue: string;
@@ -184,6 +185,7 @@ function TabsTrigger({
 type TabsContentsProps = HTMLMotionProps<'div'> & {
   children: React.ReactNode;
   transition?: Transition;
+  autoHeight?: boolean;
 };
 
 function TabsContents({
@@ -195,6 +197,7 @@ function TabsContents({
     bounce: 0,
     restDelta: 0.01,
   },
+  autoHeight = false,
   ...props
 }: TabsContentsProps) {
   const { activeValue } = useTabs();
@@ -210,7 +213,9 @@ function TabsContents({
 
   const containerRef = React.useRef<HTMLDivElement | null>(null);
   const itemRefs = React.useRef<Array<HTMLDivElement | null>>([]);
-  const [height, setHeight] = React.useState(0);
+  const [height, setHeight] = React.useState<number | string>('auto');
+  const hasMountedRef = React.useRef(false);
+  const skipRoRef = React.useRef(false);
   const roRef = React.useRef<ResizeObserver | null>(null);
 
   const measure = React.useCallback((index: number) => {
@@ -218,7 +223,7 @@ function TabsContents({
     const container = containerRef.current;
     if (!pane || !container) return 0;
 
-    const base = pane.getBoundingClientRect().height || 0;
+    const base = pane.scrollHeight || pane.getBoundingClientRect().height || 0;
 
     const cs = getComputedStyle(container);
     const isBorderBox = cs.boxSizing === 'border-box';
@@ -238,7 +243,9 @@ function TabsContents({
     return total;
   }, []);
 
-  React.useEffect(() => {
+  React.useLayoutEffect(() => {
+    if (autoHeight) return;
+
     if (roRef.current) {
       roRef.current.disconnect();
       roRef.current = null;
@@ -248,55 +255,64 @@ function TabsContents({
     const container = containerRef.current;
     if (!pane || !container) return;
 
-    setHeight(measure(activeIndex));
+    const measured = measure(activeIndex);
+
+    if (!hasMountedRef.current) {
+      hasMountedRef.current = true;
+      skipRoRef.current = true;
+    } else if (measured > 0) {
+      setHeight(measured);
+    }
 
     const ro = new ResizeObserver(() => {
+      if (skipRoRef.current) {
+        skipRoRef.current = false;
+        return;
+      }
       const next = measure(activeIndex);
-      requestAnimationFrame(() => setHeight(next));
+      if (next > 0) {
+        setHeight(next);
+      }
     });
 
     ro.observe(pane);
-    ro.observe(container);
 
     roRef.current = ro;
     return () => {
       ro.disconnect();
       roRef.current = null;
     };
-  }, [activeIndex, childrenArray.length, measure]);
-
-  React.useLayoutEffect(() => {
-    if (height === 0 && activeIndex >= 0) {
-      const next = measure(activeIndex);
-      if (next !== 0) setHeight(next);
-    }
-  }, [activeIndex, height, measure]);
+  }, [activeIndex, childrenArray.length, measure, autoHeight]);
 
   return (
     <motion.div
       ref={containerRef}
       data-slot="tabs-contents"
       style={{ overflow: 'hidden' }}
-      animate={{ height }}
+      animate={autoHeight ? undefined : { height }}
       transition={transition}
       {...props}
     >
       <motion.div
-        className="flex -mx-2"
-        animate={{ x: activeIndex * -100 + '%' }}
+        className={cn(autoHeight ? 'block' : 'flex items-start -mx-2')}
+        animate={autoHeight ? { x: 0 } : { x: activeIndex * -100 + '%' }}
         transition={transition}
       >
-        {childrenArray.map((child, index) => (
-          <div
-            key={index}
-            ref={(el) => {
-              itemRefs.current[index] = el;
-            }}
-            className="w-full shrink-0 px-2 h-full"
-          >
-            {child}
-          </div>
-        ))}
+        {childrenArray.map((child, index) => {
+          const hidden = autoHeight && index !== activeIndex;
+          return (
+            <div
+              key={index}
+              ref={(el) => {
+                itemRefs.current[index] = el;
+              }}
+              className="w-full shrink-0 px-2"
+              style={hidden ? { display: 'none' } : undefined}
+            >
+              {child}
+            </div>
+          );
+        })}
       </motion.div>
     </motion.div>
   );

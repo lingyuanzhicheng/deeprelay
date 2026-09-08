@@ -321,6 +321,28 @@ export function CardContent({ channel, stats }: { channel: Channel; stats: Stats
                                                 <span className="text-sm font-normal ml-1 text-muted-foreground">{stats.output_token.formatted.unit}</span>
                                             </dd>
                                         </div>
+
+                                        <div className="rounded-2xl border bg-card p-3 sm:p-4 transition-colors hover:bg-accent/5">
+                                            <dt className="flex items-center gap-2 mb-2 text-xs text-muted-foreground">
+                                                <div className="size-2 rounded-full bg-chart-4" />
+                                                {t('metrics.cacheReadToken')}
+                                            </dt>
+                                            <dd className="text-2xl font-bold text-card-foreground">
+                                                {stats.cache_read_token.formatted.value}
+                                                <span className="text-sm font-normal ml-1 text-muted-foreground">{stats.cache_read_token.formatted.unit}</span>
+                                            </dd>
+                                        </div>
+
+                                        <div className="rounded-2xl border bg-card p-3 sm:p-4 transition-colors hover:bg-accent/5">
+                                            <dt className="flex items-center gap-2 mb-2 text-xs text-muted-foreground">
+                                                <div className="size-2 rounded-full bg-chart-2" />
+                                                {t('metrics.cacheWriteToken')}
+                                            </dt>
+                                            <dd className="text-2xl font-bold text-card-foreground">
+                                                {stats.cache_write_token.formatted.value}
+                                                <span className="text-sm font-normal ml-1 text-muted-foreground">{stats.cache_write_token.formatted.unit}</span>
+                                            </dd>
+                                        </div>
                                     </dl>
                                 </section>
 
@@ -350,6 +372,28 @@ export function CardContent({ channel, stats }: { channel: Channel; stats: Stats
                                             <dd className="text-2xl font-bold text-card-foreground">
                                                 {stats.output_cost.formatted.value}
                                                 <span className="text-sm font-normal ml-1 text-muted-foreground">{stats.output_cost.formatted.unit}</span>
+                                            </dd>
+                                        </div>
+
+                                        <div className="rounded-2xl border bg-card p-3 sm:p-4 transition-colors hover:bg-accent/5">
+                                            <dt className="flex items-center gap-2 mb-2 text-xs text-muted-foreground">
+                                                <div className="size-2 rounded-full bg-chart-4" />
+                                                {t('metrics.cacheReadCost')}
+                                            </dt>
+                                            <dd className="text-2xl font-bold text-card-foreground">
+                                                {stats.cache_read_cost.formatted.value}
+                                                <span className="text-sm font-normal ml-1 text-muted-foreground">{stats.cache_read_cost.formatted.unit}</span>
+                                            </dd>
+                                        </div>
+
+                                        <div className="rounded-2xl border bg-card p-3 sm:p-4 transition-colors hover:bg-accent/5">
+                                            <dt className="flex items-center gap-2 mb-2 text-xs text-muted-foreground">
+                                                <div className="size-2 rounded-full bg-chart-1" />
+                                                {t('metrics.cacheWriteCost')}
+                                            </dt>
+                                            <dd className="text-2xl font-bold text-card-foreground">
+                                                {stats.cache_write_cost.formatted.value}
+                                                <span className="text-sm font-normal ml-1 text-muted-foreground">{stats.cache_write_cost.formatted.unit}</span>
                                             </dd>
                                         </div>
                                     </dl>
@@ -471,18 +515,6 @@ export function CardContent({ channel, stats }: { channel: Channel; stats: Stats
                                         )}
                                     </div>
                                 </section>
-
-                                {/* 等待时间 */}
-                                <dl className="rounded-2xl border bg-card p-3 sm:p-4 transition-colors hover:bg-accent/5">
-                                    <dt className="flex items-center gap-2 mb-2 text-xs text-muted-foreground">
-                                        <Clock className="size-4 text-primary" />
-                                        {t('metrics.avgWaitTime')}
-                                    </dt>
-                                    <dd className="text-2xl font-bold text-primary">
-                                        {stats.wait_time.formatted.value}
-                                        <span className="text-sm font-normal ml-1 text-muted-foreground">{stats.wait_time.formatted.unit}</span>
-                                    </dd>
-                                </dl>
                             </div>
 
                             {/* 操作按钮 */}

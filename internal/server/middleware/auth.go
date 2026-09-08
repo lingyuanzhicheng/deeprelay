@@ -29,6 +29,29 @@ func Auth() gin.HandlerFunc {
 	}
 }
 
+// AuthOrAPIKey 双模认证：允许账户 JWT 或 API Key（sk- 前缀）。
+// API Key 认证通过时在上下文写入 api_key_id 与 api_key_name，供 handler 做数据范围过滤
+func AuthOrAPIKey() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		token := strings.TrimPrefix(c.GetHeader("Authorization"), "Bearer ")
+		if token != "" && auth.VerifyJWTToken(token) {
+			c.Next()
+			return
+		}
+		if strings.HasPrefix(token, "sk-"+conf.APP_NAME+"-") {
+			apiKeyObj, err := op.APIKeyGetByAPIKey(token, c.Request.Context())
+			if err == nil && apiKeyObj.Enabled {
+				c.Set("api_key_id", apiKeyObj.ID)
+				c.Set("api_key_name", apiKeyObj.Name)
+				c.Next()
+				return
+			}
+		}
+		resp.Error(c, http.StatusUnauthorized, resp.ErrUnauthorized)
+		c.Abort()
+	}
+}
+
 func APIKeyAuth() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var apiKey string
@@ -77,6 +100,10 @@ func APIKeyAuth() gin.HandlerFunc {
 		}
 		c.Set("request_type", requestType)
 		c.Set("supported_models", apiKeyObj.SupportedModels)
+		c.Set("api_key_unlimited_models", apiKeyObj.UnlimitedModels)
+		c.Set("api_key_model_pro", apiKeyObj.ModelPro)
+		c.Set("api_key_model_flash", apiKeyObj.ModelFlash)
+		c.Set("api_key_model_vision", apiKeyObj.ModelVision)
 		c.Set("api_key_id", apiKeyObj.ID)
 		c.Next()
 	}

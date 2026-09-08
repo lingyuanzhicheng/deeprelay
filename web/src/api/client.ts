@@ -79,8 +79,9 @@ async function request<T>(
     // 构建请求头
     const headers = new Headers();
 
-    // 只在有 body 时设置 Content-Type
-    if (body) {
+    // POST/PUT/PATCH 强制带 Content-Type（后端 RequireJSON 中间件契约）。
+    const wantsJson = method === 'POST' || method === 'PUT' || method === 'PATCH';
+    if (wantsJson || body) {
         headers.set('Content-Type', 'application/json');
     }
 

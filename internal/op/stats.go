@@ -262,16 +262,16 @@ func StatsHourlyUpdate(metrics model.StatsMetrics) error {
 }
 
 func StatsModelUpdate(stats model.StatsModel) error {
-	modelCache, ok := statsModelCache.Get(stats.ID)
+	modelCache, ok := statsModelCache.Get(stats.GroupID)
 	if !ok {
 		modelCache = model.StatsModel{
-			ID: stats.ID,
+			GroupID: stats.GroupID,
 		}
 	}
 	modelCache.StatsMetrics.Add(stats.StatsMetrics)
-	statsModelCache.Set(stats.ID, modelCache)
+	statsModelCache.Set(stats.GroupID, modelCache)
 	statsModelCacheNeedUpdateLock.Lock()
-	statsModelCacheNeedUpdate[stats.ID] = struct{}{}
+	statsModelCacheNeedUpdate[stats.GroupID] = struct{}{}
 	statsModelCacheNeedUpdateLock.Unlock()
 	return nil
 }
@@ -289,6 +289,51 @@ func StatsAPIKeyUpdate(apiKeyID int, metrics model.StatsMetrics) error {
 	statsAPIKeyCacheNeedUpdate[apiKeyID] = struct{}{}
 	statsAPIKeyCacheNeedUpdateLock.Unlock()
 	return nil
+}
+
+// statsModelEnsure 确保指定 group 的 stats_models 行存在（0 值初始化，随下次落库持久化）。
+func statsModelEnsure(groupID int) {
+	if groupID == 0 {
+		return
+	}
+	if _, ok := statsModelCache.Get(groupID); ok {
+		return
+	}
+	_ = StatsModelUpdate(model.StatsModel{GroupID: groupID})
+}
+
+func StatsModelDel(groupID int) error {
+	if _, ok := statsModelCache.Get(groupID); !ok {
+		return nil
+	}
+	statsModelCache.Del(groupID)
+	statsModelCacheNeedUpdateLock.Lock()
+	delete(statsModelCacheNeedUpdate, groupID)
+	statsModelCacheNeedUpdateLock.Unlock()
+	return db.GetDB().Delete(&model.StatsModel{}, groupID).Error
+}
+
+func StatsModelGet(groupID int) model.StatsModel {
+	stats, ok := statsModelCache.Get(groupID)
+	if !ok {
+		tmp := model.StatsModel{
+			GroupID: groupID,
+		}
+		statsModelCache.Set(groupID, tmp)
+		statsModelCacheNeedUpdateLock.Lock()
+		statsModelCacheNeedUpdate[groupID] = struct{}{}
+		statsModelCacheNeedUpdateLock.Unlock()
+		return tmp
+	}
+	return stats
+}
+
+func StatsModelList() []model.StatsModel {
+	models := make([]model.StatsModel, 0, statsModelCache.Len())
+	for _, v := range statsModelCache.GetAll() {
+		models = append(models, v)
+	}
+	return models
 }
 
 func StatsChannelDel(id int) error {
@@ -448,6 +493,20 @@ func statsRefreshCache(ctx context.Context) error {
 		statsChannelCache.Set(v.ChannelID, v)
 	}
 
+	var loadedModels []model.StatsModel
+	result = dbConn.Find(&loadedModels)
+	if result.Error != nil {
+		return fmt.Errorf("failed to get model stats: %v", result.Error)
+	}
+
+	statsModelCache.Clear()
+	statsModelCacheNeedUpdateLock.Lock()
+	statsModelCacheNeedUpdate = make(map[int]struct{})
+	statsModelCacheNeedUpdateLock.Unlock()
+	for _, v := range loadedModels {
+		statsModelCache.Set(v.GroupID, v)
+	}
+
 	var loadedAPIKeys []model.StatsAPIKey
 	result = dbConn.Find(&loadedAPIKeys)
 	if result.Error != nil {
@@ -472,4 +531,27 @@ func statsRefreshCache(ctx context.Context) error {
 	statsHourlyCacheLock.Unlock()
 
 	return nil
+}
+
+type StatsRealtime struct {
+	WindowSeconds int64 `json:"window_seconds"`
+	RequestCount  int64 `json:"request_count"`
+	TotalTokens   int64 `json:"total_tokens"`
+}
+
+func StatsRealtimeGet(ctx context.Context, window time.Duration) (StatsRealtime, error) {
+	if window <= 0 {
+		window = 60 * time.Second
+	}
+	cutoff := time.Now().Unix() - int64(window.Seconds())
+	var r StatsRealtime
+	r.WindowSeconds = int64(window.Seconds())
+	err := db.GetDB().WithContext(ctx).
+		Raw(`SELECT
+			COUNT(*) AS request_count,
+			COALESCE(SUM(input_tokens + cache_read_tokens + cache_write_tokens + output_tokens), 0) AS total_tokens
+		FROM relay_logs
+		WHERE time >= ?`, cutoff).
+		Scan(&r).Error
+	return r, err
 }

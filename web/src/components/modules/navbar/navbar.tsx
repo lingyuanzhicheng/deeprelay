@@ -7,9 +7,19 @@ import { ROUTES } from "@/route/config"
 import { usePreload } from "@/route/use-preload"
 import { ENTRANCE_VARIANTS } from "@/lib/animations/fluid-transitions"
 
-export function NavBar() {
+export type NavBarProps = {
+    items?: readonly string[];
+    activeId?: string;
+    onSelect?: (id: string) => void;
+};
+
+export function NavBar({ items, activeId, onSelect }: NavBarProps = {}) {
     const { activeItem, setActiveItem } = useNavStore()
     const { preload } = usePreload()
+
+    const routes = items ? ROUTES.filter((route) => items.includes(route.id)) : ROUTES
+    const active = activeId ?? activeItem
+    const select = (id: string) => (onSelect ? onSelect(id) : setActiveItem(id as NavItem))
 
     return (
         <div className="relative z-50 md:min-h-screen">
@@ -25,13 +35,13 @@ export function NavBar() {
                 initial="initial"
                 animate="animate"
             >
-                {ROUTES.map((route, index) => {
-                    const isActive = activeItem === route.id
+                {routes.map((route, index) => {
+                    const isActive = active === route.id
                     return (
                         <motion.button
                             key={route.id}
                             type="button"
-                            onClick={() => setActiveItem(route.id as NavItem)}
+                            onClick={() => select(route.id)}
                             onMouseEnter={() => preload(route.id)}
                             className={cn(
                                 "relative p-2 md:p-3 rounded-2xl z-20",

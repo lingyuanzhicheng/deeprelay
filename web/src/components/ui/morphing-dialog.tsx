@@ -44,15 +44,34 @@ function useMorphingDialog() {
 export type MorphingDialogProviderProps = {
   children: React.ReactNode;
   transition?: Transition;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
+  defaultOpen?: boolean;
 };
 
 function MorphingDialogProvider({
   children,
   transition,
+  open,
+  onOpenChange,
+  defaultOpen = false,
 }: MorphingDialogProviderProps) {
-  const [isOpen, setIsOpen] = useState(false);
+  const [internalOpen, setInternalOpen] = useState(defaultOpen);
+  const isControlled = open !== undefined;
+  const isOpen = isControlled ? open : internalOpen;
   const uniqueId = useId();
   const triggerRef = useRef<HTMLDivElement>(null!);
+
+  const setIsOpen = useCallback(
+    (value: React.SetStateAction<boolean>) => {
+      const next = typeof value === 'function' ? value(isOpen) : value;
+      onOpenChange?.(next);
+      if (!isControlled) {
+        setInternalOpen(next);
+      }
+    },
+    [isControlled, isOpen, onOpenChange]
+  );
 
   const contextValue = useMemo(
     () => ({
@@ -61,7 +80,7 @@ function MorphingDialogProvider({
       uniqueId,
       triggerRef,
     }),
-    [isOpen, uniqueId]
+    [isOpen, setIsOpen, uniqueId]
   );
 
   return (
@@ -74,11 +93,18 @@ function MorphingDialogProvider({
 export type MorphingDialogProps = {
   children: React.ReactNode;
   transition?: Transition;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
+  defaultOpen?: boolean;
 };
 
-function MorphingDialog({ children, transition }: MorphingDialogProps) {
+function MorphingDialog({ children, transition, open, onOpenChange, defaultOpen }: MorphingDialogProps) {
   return (
-    <MorphingDialogProvider>
+    <MorphingDialogProvider
+      open={open}
+      onOpenChange={onOpenChange}
+      defaultOpen={defaultOpen}
+    >
       <MotionConfig transition={transition}>{children}</MotionConfig>
     </MorphingDialogProvider>
   );
@@ -154,12 +180,16 @@ export type MorphingDialogContentProps = {
   children: React.ReactNode;
   className?: string;
   style?: React.CSSProperties;
+  lockBodyScroll?: boolean;
+  enableLayout?: boolean;
 };
 
 function MorphingDialogContent({
   children,
   className,
   style,
+  lockBodyScroll = true,
+  enableLayout = false,
 }: MorphingDialogContentProps) {
   const { setIsOpen, isOpen, uniqueId, triggerRef } = useMorphingDialog();
   const containerRef = useRef<HTMLDivElement>(null!);
@@ -169,6 +199,11 @@ function MorphingDialogContent({
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
+        const target = event.target as HTMLElement | null;
+        const nestedContent = target?.closest('[data-morphing-dialog-content]');
+        if (nestedContent && !containerRef.current?.contains(nestedContent)) {
+          return; // Escape belongs to a nested dialog, don't close outer
+        }
         setIsOpen(false);
       }
       if (event.key === 'Tab') {
@@ -197,7 +232,9 @@ function MorphingDialogContent({
 
   useEffect(() => {
     if (isOpen) {
-      document.body.classList.add('overflow-hidden');
+      if (lockBodyScroll) {
+        document.body.classList.add('overflow-hidden');
+      }
       const focusableElements = containerRef.current?.querySelectorAll(
         'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
       );
@@ -207,10 +244,12 @@ function MorphingDialogContent({
         (focusableElements[0] as HTMLElement).focus();
       }
     } else {
-      document.body.classList.remove('overflow-hidden');
+      if (lockBodyScroll) {
+        document.body.classList.remove('overflow-hidden');
+      }
       triggerRef.current?.focus();
     }
-  }, [isOpen, triggerRef]);
+  }, [isOpen, triggerRef, lockBodyScroll]);
 
   useClickOutside(
     containerRef,
@@ -235,6 +274,15 @@ function MorphingDialogContent({
       if (openPopoverContent) {
         return true;
       }
+      // Ignore clicks inside a nested MorphingDialog content (defer to inner dialog)
+      const nestedContent = target?.closest('[data-morphing-dialog-content]');
+      if (nestedContent && !containerRef.current.contains(nestedContent)) {
+        return true;
+      }
+      const popoverOwner = target?.closest('[data-morphing-dialog-popover-owner]')?.getAttribute('data-morphing-dialog-popover-owner');
+      if (popoverOwner && popoverOwner !== uniqueId) {
+        return true;
+      }
       return false;
     }
   );
@@ -242,7 +290,9 @@ function MorphingDialogContent({
   return (
     <motion.div
       ref={containerRef}
+      layout={enableLayout}
       layoutId={`dialog-${uniqueId}`}
+      data-morphing-dialog-content
       className={cn('overflow-hidden', className)}
       style={style}
       role='dialog'
@@ -259,11 +309,20 @@ export type MorphingDialogContainerProps = {
   children: React.ReactNode;
   className?: string;
   style?: React.CSSProperties;
+  mode?: 'modal' | 'popover';
+  anchorRef?: React.RefObject<HTMLElement | null>;
 };
 
-function MorphingDialogContainer({ children }: MorphingDialogContainerProps) {
-  const { isOpen, uniqueId } = useMorphingDialog();
+function MorphingDialogContainer({
+  children,
+  className,
+  style,
+  mode = 'modal',
+  anchorRef,
+}: MorphingDialogContainerProps) {
+  const { isOpen, uniqueId, triggerRef } = useMorphingDialog();
   const [mounted, setMounted] = useState(false);
+  const [position, setPosition] = useState<{ top: number; right: number } | null>(null);
 
   useEffect(() => {
     // Schedule state update for next tick to avoid synchronous update warning
@@ -274,7 +333,67 @@ function MorphingDialogContainer({ children }: MorphingDialogContainerProps) {
     };
   }, []);
 
+  const anchor = anchorRef ?? triggerRef;
+
+  useEffect(() => {
+    if (mode !== 'popover') return;
+    if (!isOpen) {
+      setPosition(null);
+      return;
+    }
+    const target = anchor.current ?? triggerRef.current;
+    if (!target) return;
+    const update = () => {
+      const rect = target.getBoundingClientRect();
+      setPosition({
+        top: rect.top,
+        right: Math.max(8, window.innerWidth - rect.right),
+      });
+    };
+    update();
+    window.addEventListener('resize', update);
+    window.addEventListener('scroll', update, true);
+    return () => {
+      window.removeEventListener('resize', update);
+      window.removeEventListener('scroll', update, true);
+    };
+  }, [isOpen, mode, anchor, triggerRef]);
+
   if (!mounted) return null;
+
+  if (mode === 'popover') {
+    return createPortal(
+      <AnimatePresence initial={false} mode="sync">
+        {isOpen && (
+          <div
+            key={`container-${uniqueId}`}
+            data-morphing-dialog-popover-owner={uniqueId}
+            className="fixed z-[60]"
+            style={{
+              top: 0,
+              left: 0,
+              width: '100vw',
+              height: '100vh',
+              pointerEvents: 'none',
+              ...style,
+            }}
+          >
+            <div
+              className={cn('absolute', className)}
+              style={{
+                top: position?.top ?? 0,
+                right: position?.right ?? 0,
+                pointerEvents: 'auto',
+              }}
+            >
+              {children}
+            </div>
+          </div>
+        )}
+      </AnimatePresence>,
+      document.body,
+    );
+  }
 
   return createPortal(
     <AnimatePresence initial={false} mode='sync'>

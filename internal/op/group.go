@@ -66,6 +66,11 @@ func GroupCreate(group *model.Group, ctx context.Context) error {
 	}
 	groupCache.Set(group.ID, *group)
 	groupMap.Set(group.Name, *group)
+
+	if err := llminfoEnsure(group.ID, ctx); err != nil {
+		return fmt.Errorf("failed to ensure llminfo: %w", err)
+	}
+	statsModelEnsure(group.ID)
 	return nil
 }
 
@@ -207,6 +212,13 @@ func GroupDel(id int, ctx context.Context) error {
 		return fmt.Errorf("failed to commit transaction: %w", err)
 	}
 
+	if err := LLMInfoDeleteByGroupIDs([]int{id}, ctx); err != nil {
+		return fmt.Errorf("failed to delete llminfo: %w", err)
+	}
+	if err := StatsModelDel(id); err != nil {
+		return fmt.Errorf("failed to delete stats model: %w", err)
+	}
+
 	groupCache.Del(id)
 	groupMap.Del(group.Name)
 	return nil
@@ -220,6 +232,11 @@ func GroupItemAdd(item *model.GroupItem, ctx context.Context) error {
 	if err := db.GetDB().WithContext(ctx).Create(item).Error; err != nil {
 		return err
 	}
+
+	if err := llminfoEnsure(item.GroupID, ctx); err != nil {
+		return fmt.Errorf("failed to ensure llminfo: %w", err)
+	}
+	statsModelEnsure(item.GroupID)
 
 	return groupRefreshCacheByID(item.GroupID, ctx)
 }
@@ -278,6 +295,11 @@ func GroupItemBatchAdd(groupID int, items []model.GroupIDAndLLMName, ctx context
 		Create(&newItems).Error; err != nil {
 		return fmt.Errorf("failed to create group items: %w", err)
 	}
+
+	if err := llminfoEnsure(groupID, ctx); err != nil {
+		return fmt.Errorf("failed to ensure llminfo: %w", err)
+	}
+	statsModelEnsure(groupID)
 
 	return groupRefreshCacheByID(groupID, ctx)
 }

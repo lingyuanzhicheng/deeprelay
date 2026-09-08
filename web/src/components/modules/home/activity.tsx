@@ -158,19 +158,48 @@ export function Activity() {
                             <div className="space-y-2">
                                 <p className="font-semibold text-foreground">{tooltipDateLabel}</p>
                                 {tooltip.day.formatted ? (
-                                    <div className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 items-center text-muted-foreground">
-                                        {[
-                                            { labelKey: 'requestCount', ...tooltip.day.formatted.request_count },
-                                            { labelKey: 'waitTime', ...tooltip.day.formatted.wait_time },
-                                            { labelKey: 'totalToken', ...tooltip.day.formatted.total_token },
-                                            { labelKey: 'totalCost', ...tooltip.day.formatted.total_cost },
-                                        ].map((item, index) => (
-                                            <Fragment key={index}>
-                                                <span className="wrap-break-word">{t(item.labelKey)}</span>
-                                                <span className="text-foreground font-medium text-right">{item.formatted.value}{item.formatted.unit}</span>
-                                            </Fragment>
-                                        ))}
-                                    </div>
+                                    (() => {
+                                        const f = tooltip.day.formatted;
+                                        const item = (labelKey: string, metric: { raw: number; formatted: { value: string; unit: string } }) => ({ labelKey, ...metric });
+                                        const groups = [
+                                            [
+                                                item('requestCount', f.request_count),
+                                                item('success', f.request_success),
+                                                item('failed', f.request_failed),
+                                            ],
+                                            [
+                                                item('totalToken', f.total_token),
+                                                item('inputToken', f.input_token),
+                                                item('outputToken', f.output_token),
+                                                item('cacheWriteToken', f.cache_write_token),
+                                                item('cacheReadToken', f.cache_read_token),
+                                            ],
+                                            [
+                                                item('totalCost', f.total_cost),
+                                                item('inputCost', f.input_cost),
+                                                item('outputCost', f.output_cost),
+                                                item('cacheWriteCost', f.cache_write_cost),
+                                                item('cacheReadCost', f.cache_read_cost),
+                                            ],
+                                        ];
+                                        return (
+                                            <div className="space-y-1.5">
+                                                {groups.map((group, groupIndex) => (
+                                                    <Fragment key={groupIndex}>
+                                                        {groupIndex > 0 && <div className="h-px bg-border my-1.5" />}
+                                                        <div className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 items-center text-muted-foreground">
+                                                            {group.map((row) => (
+                                                                <Fragment key={row.labelKey}>
+                                                                    <span className="wrap-break-word">{t(row.labelKey)}</span>
+                                                                    <span className="text-foreground font-medium text-right">{row.formatted.value}{row.formatted.unit}</span>
+                                                                </Fragment>
+                                                            ))}
+                                                        </div>
+                                                    </Fragment>
+                                                ))}
+                                            </div>
+                                        );
+                                    })()
                                 ) : (
                                     <p className="text-muted-foreground">{t('noData')}</p>
                                 )}

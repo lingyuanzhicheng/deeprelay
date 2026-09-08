@@ -2,6 +2,7 @@ package op
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 	"time"
@@ -10,22 +11,29 @@ import (
 	"github.com/lingyuanzhicheng/deeprelay/internal/modelsdev"
 )
 
+// ErrCacheNotReady 当 models.dev 本地快照未加载时返回。
+// 调用方应将此错误作为 503 Service Unavailable 返回给前端。
+var ErrCacheNotReady = errors.New("modelsdev cache not ready, please sync first")
+
 func fetchModelsDevData(ctx context.Context) (*modelsdev.Data, error) {
 	return modelsdev.Fetch(ctx)
 }
 
+// ModelsDevProviders 返回当前缓存中的 provider 列表。
+// 读内存缓存（冷启动时从 data/modelsdev.json 加载），不触发网络请求。
+// 返回 (nil, error) 当缓存尚未建立（需先通过定时任务或手动同步拉取一次）。
 func ModelsDevProviders(ctx context.Context) ([]string, error) {
-	data, err := fetchModelsDevData(ctx)
-	if err != nil {
-		return nil, err
+	data := modelsdev.GetCached()
+	if data == nil {
+		return nil, ErrCacheNotReady
 	}
 	return data.Providers(), nil
 }
 
-func ModelsDevModels(provider string, ctx context.Context) ([]model.OpenAIModel, error) {
-	data, err := fetchModelsDevData(ctx)
-	if err != nil {
-		return nil, err
+func ModelsDevModels(provider string, ctx context.Context) ([]modelsdev.ModelsDevModelInfo, error) {
+	data := modelsdev.GetCached()
+	if data == nil {
+		return nil, ErrCacheNotReady
 	}
 	return data.Models(provider), nil
 }
@@ -88,9 +96,9 @@ func ChannelLLMPriceSyncAllFromModelsDev(ctx context.Context) error {
 }
 
 func ChannelLLMPriceAutoMatch(req model.ChannelLLMPriceAutoMatchRequest, ctx context.Context) (int, error) {
-	data, err := fetchModelsDevData(ctx)
-	if err != nil {
-		return 0, err
+	data := modelsdev.GetCached()
+	if data == nil {
+		return 0, ErrCacheNotReady
 	}
 	if len(data.Models(req.Provider)) == 0 {
 		return 0, fmt.Errorf("provider not found: %s", req.Provider)

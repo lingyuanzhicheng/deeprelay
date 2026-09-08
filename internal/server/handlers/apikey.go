@@ -34,6 +34,10 @@ func init() {
 		AddRoute(
 			router.NewRoute("/delete/:id", http.MethodDelete).
 				Handle(deleteAPIKey),
+		).
+		AddRoute(
+			router.NewRoute("/reset/:id", http.MethodPost).
+				Handle(resetAPIKey),
 		)
 	router.NewGroupRouter("/api/v1/apikey").
 		Use(middleware.APIKeyAuth()).
@@ -44,6 +48,10 @@ func init() {
 		AddRoute(
 			router.NewRoute("/login", http.MethodGet).
 				Handle(loginAPIKey),
+		).
+		AddRoute(
+			router.NewRoute("/me/reset", http.MethodPost).
+				Handle(resetOwnAPIKey),
 		)
 }
 
@@ -54,6 +62,9 @@ func createAPIKey(c *gin.Context) {
 		return
 	}
 	req.APIKey = auth.GenerateAPIKey()
+	if req.UnlimitedModels {
+		req.SupportedModels = ""
+	}
 	if err := op.APIKeyCreate(&req, c.Request.Context()); err != nil {
 		resp.Error(c, http.StatusInternalServerError, err.Error())
 		return
@@ -76,6 +87,9 @@ func updateAPIKey(c *gin.Context) {
 		resp.Error(c, http.StatusBadRequest, resp.ErrInvalidJSON)
 		return
 	}
+	if req.UnlimitedModels {
+		req.SupportedModels = ""
+	}
 	if err := op.APIKeyUpdate(&req, c.Request.Context()); err != nil {
 		resp.Error(c, http.StatusInternalServerError, err.Error())
 		return
@@ -97,6 +111,22 @@ func deleteAPIKey(c *gin.Context) {
 	resp.Success(c, nil)
 }
 
+func resetAPIKey(c *gin.Context) {
+	id := c.Param("id")
+	idNum, err := strconv.Atoi(id)
+	if err != nil {
+		resp.Error(c, http.StatusBadRequest, resp.ErrInvalidParam)
+		return
+	}
+	newKey := auth.GenerateAPIKey()
+	updated, err := op.APIKeyReset(idNum, newKey, c.Request.Context())
+	if err != nil {
+		resp.Error(c, http.StatusInternalServerError, err.Error())
+		return
+	}
+	resp.Success(c, updated)
+}
+
 func getStatsAPIKeyById(c *gin.Context) {
 	id := c.GetInt("api_key_id")
 	stats := op.StatsAPIKeyGet(id)
@@ -110,22 +140,40 @@ func getStatsAPIKeyById(c *gin.Context) {
 		resp.Error(c, http.StatusInternalServerError, err.Error())
 		return
 	}
-	var modelsString string
-	if info.SupportedModels == "" {
-		modelsString = strings.Join(models, ", ")
+	if info.UnlimitedModels {
+		info.SupportedModels = ""
 	} else {
-		supportedModels := lo.Map(strings.Split(info.SupportedModels, ","), func(s string, _ int) string {
-			return strings.TrimSpace(s)
-		})
-		models = lo.Filter(models, func(m string, _ int) bool {
-			return lo.Contains(supportedModels, m)
-		})
-		modelsString = strings.Join(models, ", ")
+		var modelsString string
+		if info.SupportedModels == "" {
+			modelsString = strings.Join(models, ", ")
+		} else {
+			supportedModels := lo.Map(strings.Split(info.SupportedModels, ","), func(s string, _ int) string {
+				return strings.TrimSpace(s)
+			})
+			models = lo.Filter(models, func(m string, _ int) bool {
+				return lo.Contains(supportedModels, m)
+			})
+			modelsString = strings.Join(models, ", ")
+		}
+		info.SupportedModels = modelsString
 	}
-	info.SupportedModels = modelsString
 	resp.Success(c, map[string]any{
 		"stats": stats,
 		"info":  info,
+	})
+}
+
+// resetOwnAPIKey 密钥登录模式下重置当前密钥，返回新生成的密钥值。
+// 旧密钥立即失效，调用方需妥善保存返回的新密钥。
+func resetOwnAPIKey(c *gin.Context) {
+	id := c.GetInt("api_key_id")
+	newKey := auth.GenerateAPIKey()
+	if _, err := op.APIKeyReset(id, newKey, c.Request.Context()); err != nil {
+		resp.Error(c, http.StatusInternalServerError, err.Error())
+		return
+	}
+	resp.Success(c, map[string]any{
+		"api_key": newKey,
 	})
 }
 

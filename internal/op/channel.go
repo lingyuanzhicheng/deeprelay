@@ -68,7 +68,7 @@ func ChannelKeyUpdate(key model.ChannelKey) error {
 }
 
 // ChannelKeyResetCost 重置单个密钥的已用成本（UsedCost）。
-	// 对于周期密钥，同时把 PeriodStart 重置为当前时间，避免刚重置后被判定为过期。
+// 对于周期密钥，同时把 PeriodStart 重置为当前时间，避免刚重置后被判定为过期。
 func ChannelKeyResetCost(keyID int, ctx context.Context) error {
 	key, ok := channelKeyCache.Get(keyID)
 	if !ok {
@@ -400,6 +400,12 @@ func ChannelDel(id int, ctx context.Context) error {
 		return fmt.Errorf("failed to delete channel stats: %w", err)
 	}
 
+	// 删除渠道模型价格
+	if err := tx.Where("channel_id = ?", id).Delete(&model.ChannelLLMPrice{}).Error; err != nil {
+		tx.Rollback()
+		return fmt.Errorf("failed to delete channel llm prices: %w", err)
+	}
+
 	// 删除渠道
 	if err := tx.Delete(&model.Channel{}, id).Error; err != nil {
 		tx.Rollback()
@@ -415,6 +421,11 @@ func ChannelDel(id int, ctx context.Context) error {
 	for _, k := range ch.Keys {
 		if k.ID != 0 {
 			channelKeyCache.Del(k.ID)
+		}
+	}
+	for _, p := range channelLLMPriceCache.GetAll() {
+		if p.ChannelID == id {
+			channelLLMPriceCache.Del(channelLLMPriceCacheKey(p.ChannelID, p.ModelName))
 		}
 	}
 	StatsChannelDel(id)

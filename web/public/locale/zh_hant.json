@@ -28,11 +28,11 @@
         "requestCount": "請求次數",
         "timeConsumed": "消耗時間",
         "totalToken": "消耗 Token",
-        "totalCost": "消耗費用",
+        "totalCost": "消耗積分",
         "inputTokens": "輸入 Tokens",
-        "inputCost": "輸入費用",
+        "inputCost": "輸入積分",
         "outputTokens": "輸出 Tokens",
-        "outputCost": "輸出費用",
+        "outputCost": "輸出積分",
         "successRequests": "成功請求",
         "failedRequests": "失敗請求",
         "quota": "剩餘額度",
@@ -41,7 +41,14 @@
         "neverExpire": "永不過期",
         "daysLeft": "天後到期",
         "expired": "已過期",
-        "supportedModels": "支援的模型"
+        "supportedModels": "支援的模型",
+        "creditsBalance": "積分餘額",
+        "successRate": "成功率",
+        "cacheWriteTokens": "快取寫入 Tokens",
+        "cacheReadTokens": "快取讀取 Tokens",
+        "cacheWriteCredits": "快取寫入積分",
+        "cacheReadCredits": "快取讀取積分",
+        "cancel": "取消"
     },
     "navbar": {
         "home": "主頁",
@@ -49,8 +56,10 @@
         "group": "分組",
         "key": "金鑰",
         "model": "價格",
+        "apikey": "金鑰",
         "log": "日誌",
-        "setting": "設定"
+        "setting": "設定",
+        "llminfo": "模型"
     },
     "toolbar": {
         "popover": {
@@ -93,7 +102,17 @@
             "waitTime": "等待時間",
             "totalToken": "消耗 Token",
             "totalCost": "消耗費用",
-            "noData": "無數據"
+            "noData": "無數據",
+            "success": "成功",
+            "failed": "失敗",
+            "inputToken": "輸入 Token",
+            "outputToken": "輸出 Token",
+            "cacheWriteToken": "快取寫入 Token",
+            "cacheReadToken": "快取讀取 Token",
+            "inputCost": "輸入費用",
+            "outputCost": "輸出費用",
+            "cacheWriteCost": "快取寫入費用",
+            "cacheReadCost": "快取讀取費用"
         },
         "total": {
             "requestStats": "請求統計",
@@ -107,10 +126,33 @@
             "inputTokens": "輸入 Tokens",
             "inputCost": "輸入費用",
             "outputTokens": "輸出 Tokens",
-            "outputCost": "輸出費用"
+            "outputCost": "輸出費用",
+            "section_realtime": "實時數據",
+            "section_consumption": "今日消耗",
+            "section_stability": "今日狀態",
+            "section_requests": "今日請求",
+            "section_input": "今日輸入",
+            "section_output": "今日輸出",
+            "section_cacheRead": "快取讀取",
+            "section_cacheWrite": "快取寫入",
+            "realtime_rpm": "RPM",
+            "realtime_tpm": "TPM",
+            "consumption_token": "消耗 Token",
+            "consumption_cost": "消耗費用",
+            "stability_successRate": "成功率",
+            "stability_cacheHitRate": "快取命中率",
+            "requests_success": "成功請求",
+            "requests_failed": "失敗請求",
+            "input_token": "輸入 Tokens",
+            "input_cost": "輸入費用",
+            "output_token": "輸出 Tokens",
+            "output_cost": "輸出費用",
+            "cacheRead_token": "讀取 Tokens",
+            "cacheRead_cost": "讀取費用",
+            "cacheWrite_token": "寫入 Tokens",
+            "cacheWrite_cost": "寫入費用"
         },
         "chart": {
-            "title": "趨勢",
             "totalRequests": "請求次數",
             "totalCost": "消費金額",
             "totalTokens": "Tokens 消耗",
@@ -124,7 +166,13 @@
                 "today": "今天",
                 "last7Days": "7天",
                 "last30Days": "30天"
-            }
+            },
+            "success": "成功",
+            "failed": "失敗",
+            "input": "輸入",
+            "output": "輸出",
+            "cacheWrite": "快取寫入",
+            "cacheRead": "快取讀取"
         },
         "rank": {
             "title": "排行榜",
@@ -133,6 +181,69 @@
             "sortByTokens": "Tokens",
             "noData": "暫無排行數據",
             "successRate": "成功率"
+        },
+        "summary": {
+            "section_input": "輸入統計",
+            "section_output": "輸出統計",
+            "section_cacheRead": "快取讀取",
+            "section_cacheWrite": "快取寫入",
+            "section_breaker": "熔斷統計",
+            "breaker_healthRate": "熔斷健康率",
+            "section_status": "狀態統計",
+            "section_requests": "請求統計",
+            "breaker_broken": "熔斷三元組"
+        }
+    },
+    "apiKeyItem": {
+        "requestCount": "請求次數",
+        "models": "可用模型",
+        "successRequests": "成功請求",
+        "failedRequests": "失敗請求",
+        "balance": "金鑰餘額",
+        "expireAt": "過期日期",
+        "neverExpire": "永不過期",
+        "unlimited": "無限制",
+        "totalToken": "總 Token"
+    },
+    "apiKeyDetail": {
+        "title": {
+            "view": "金鑰詳情",
+            "edit": "編輯金鑰"
+        },
+        "metrics": {
+            "totalRequests": "總請求",
+            "totalToken": "總 Token",
+            "totalCost": "總支出",
+            "balance": "金鑰餘額",
+            "expireAt": "過期時間",
+            "successRequests": "成功請求",
+            "failedRequests": "失敗請求",
+            "inputToken": "輸入 Token",
+            "outputToken": "輸出 Token",
+            "inputCost": "輸入開支",
+            "outputCost": "輸出開支",
+            "noStats": "暫無統計數據",
+            "cacheReadToken": "快取讀 Token",
+            "cacheWriteToken": "快取寫 Token",
+            "cacheReadCost": "快取讀開支",
+            "cacheWriteCost": "快取寫開支"
+        },
+        "sections": {
+            "requests": "請求統計",
+            "tokens": "Token 統計",
+            "costs": "費用統計",
+            "apiKeyValue": "金鑰值"
+        },
+        "neverExpire": "永不過期",
+        "unlimited": "無限制",
+        "actions": {
+            "edit": "編輯",
+            "save": "儲存",
+            "delete": "刪除",
+            "cancel": "取消",
+            "confirmDelete": "確認刪除",
+            "deleting": "刪除中...",
+            "saving": "儲存中..."
         }
     },
     "setting": {
@@ -202,13 +313,13 @@
             }
         },
         "apiKey": {
-            "title": "API 金鑰",
-            "empty": "暫無 API 金鑰",
+            "title": "金鑰",
+            "empty": "暫無金鑰",
             "add": "新增金鑰",
             "loadFailed": "載入失敗",
             "form": {
                 "name": "名稱",
-                "maxCost": "最大金額",
+                "maxCost": "金鑰餘額",
                 "maxCostPlaceholder": "請輸入金額",
                 "unlimited": "無限制",
                 "expireAt": "過期日期",
@@ -216,12 +327,18 @@
                 "neverExpire": "永不過期",
                 "supportedModels": "支援的模型",
                 "noModels": "暫無可選模型",
-                "modelsHint": "不選擇則為無限制",
                 "enabled": "是否啟用",
                 "cancel": "取消",
                 "create": "建立",
                 "save": "儲存",
-                "confirm": "確認"
+                "confirm": "確認",
+                "apiKeyValue": "金鑰值",
+                "resetKey": "重設",
+                "resetConfirm": "確定要重設此金鑰嗎？舊金鑰將立即失效。",
+                "modelUnlimited": "模型無限制",
+                "routingModel": "路由模型",
+                "selectGroup": "選擇分組",
+                "disabled": "不啟用"
             },
             "stats": {
                 "noData": "暫無統計數據",
@@ -233,12 +350,16 @@
                 "requestFailed": "失敗請求"
             },
             "toast": {
-                "createSuccess": "API 金鑰建立成功",
-                "createError": "API 金鑰建立失敗",
-                "updateSuccess": "API 金鑰更新成功",
-                "updateError": "API 金鑰更新失敗",
-                "deleteSuccess": "API 金鑰刪除成功",
-                "deleteError": "API 金鑰刪除失敗"
+                "createSuccess": "金鑰建立成功",
+                "createError": "金鑰建立失敗",
+                "updateSuccess": "金鑰更新成功",
+                "updateError": "金鑰更新失敗",
+                "deleteSuccess": "金鑰刪除成功",
+                "deleteError": "金鑰刪除失敗",
+                "enabled": "已啟用",
+                "disabled": "已停用",
+                "resetSuccess": "金鑰已重設",
+                "resetError": "金鑰重設失敗"
             }
         },
         "llmPrice": {
@@ -272,31 +393,6 @@
             "neverSynced": "從未同步",
             "syncSuccess": "供應源同步成功",
             "syncFailed": "供應源同步失敗"
-        },
-        "account": {
-            "title": "帳戶設定",
-            "save": "儲存",
-            "saving": "儲存中...",
-            "username": {
-                "label": "修改使用者名稱",
-                "placeholder": "請輸入新使用者名稱",
-                "empty": "使用者名稱不能為空",
-                "success": "使用者名稱修改成功",
-                "failed": "使用者名稱修改失敗"
-            },
-            "password": {
-                "label": "修改密碼",
-                "oldPlaceholder": "請輸入當前密碼",
-                "newPlaceholder": "請輸入新密碼",
-                "confirmPlaceholder": "請確認新密碼",
-                "oldEmpty": "請輸入當前密碼",
-                "newEmpty": "請輸入新密碼",
-                "mismatch": "兩次輸入的密碼不一致",
-                "tooShort": "密碼長度至少為6位",
-                "change": "修改密碼",
-                "success": "密碼修改成功",
-                "failed": "密碼修改失敗"
-            }
         },
         "info": {
             "title": "版本資訊",
@@ -332,6 +428,41 @@
             },
             "clearSuccess": "日誌已清空",
             "clearFailed": "清空失敗"
+        },
+        "copySuccess": "已複製",
+        "account": {
+            "title": "帳戶設定",
+            "save": "儲存",
+            "saving": "儲存中...",
+            "username": {
+                "label": "修改使用者名稱",
+                "placeholder": "請輸入新使用者名稱",
+                "empty": "使用者名稱不能為空",
+                "success": "使用者名稱修改成功",
+                "failed": "使用者名稱修改失敗"
+            },
+            "password": {
+                "label": "修改密碼",
+                "oldPlaceholder": "請輸入當前密碼",
+                "newPlaceholder": "請輸入新密碼",
+                "confirmPlaceholder": "請確認新密碼",
+                "oldEmpty": "請輸入當前密碼",
+                "newEmpty": "請輸入新密碼",
+                "mismatch": "兩次輸入的密碼不一致",
+                "tooShort": "密碼長度至少為6位",
+                "change": "修改密碼",
+                "success": "密碼修改成功",
+                "failed": "密碼修改失敗"
+            }
+        },
+        "keyAccount": {
+            "title": "帳戶",
+            "showKeyValue": "密鑰值",
+            "resetKey": "重置密鑰",
+            "resetConfirm": "確定要重置密鑰嗎？重置後舊密鑰將立即失效。",
+            "resetSuccess": "密鑰已重置，請妥善保存新密鑰",
+            "resetInvalidated": "舊密鑰已立即失效，請複製並保存新密鑰，使用新密鑰重新登入。",
+            "reset": "重置"
         }
     },
     "group": {
@@ -402,6 +533,8 @@
             "selectAll": "全選",
             "selectHint": "選擇模型進行批量匹配",
             "empty": "未找到模型",
+            "noMatch": "沒有匹配的模型",
+            "filter": "搜尋模型",
             "unbound": "未綁定",
             "batchAutoMatch": "批量自動匹配",
             "syncModelsDev": "同步 models.dev",
@@ -414,6 +547,7 @@
         },
         "overlay": {
             "cancel": "取消",
+            "back": "返回",
             "input": "輸入",
             "output": "輸出",
             "cacheRead": "快取讀取",
@@ -428,6 +562,7 @@
             "autoFilled": "已從 models.dev 自動填充"
         },
         "toast": {
+            "invalidPrice": "價格必須為非負數字",
             "priceUpdated": "價格已更新",
             "updateFailed": "更新失敗",
             "synced": "已從 models.dev 同步價格",
@@ -441,7 +576,12 @@
             "autoMatchFailed": "自動匹配失敗",
             "matchedCount": "匹配到 {count} 個模型",
             "batchUnbound": "已解綁 {count} 個模型",
-            "batchReset": "已重置 {count} 個模型"
+            "batchUnboundFailed": "{count} 個解綁失敗",
+            "batchReset": "已重置 {count} 個模型",
+            "batchResetFailed": "{count} 個重置失敗",
+            "cacheNotReady": "models.dev 緩存未就緒",
+            "cacheNotReadyHint": "請前往設定頁，先同步 models.dev。",
+            "goToSetting": "前往設定"
         },
         "edit": {
             "custom": "自訂模型價格",
@@ -449,6 +589,13 @@
         }
     },
     "log": {
+        "toolbar": {
+            "refresh": "即時重新整理",
+            "filter": "時間篩選",
+            "startDate": "起始時間",
+            "endDate": "截至時間",
+            "clear": "清除篩選"
+        },
         "list": {
             "noMore": "沒有更多日誌了"
         },
@@ -457,9 +604,14 @@
             "errorInfo": "錯誤訊息",
             "firstToken": "首字",
             "totalTime": "總耗時",
+            "tps": "輸出速度",
             "input": "輸入",
             "output": "輸出",
+            "cacheWrite": "緩存寫入",
+            "cacheRead": "緩存讀取",
             "cost": "費用",
+            "channelCost": "渠道側花費",
+            "apikeyCost": "金鑰側花費",
             "requestContent": "請求內容",
             "responseContent": "響應內容",
             "noRequestContent": "(無請求內容)",
@@ -469,17 +621,21 @@
             "retryDetails": "重試詳情",
             "attempts": "次嘗試",
             "success": "成功",
-            "failed": "失敗"
+            "failed": "失敗",
+            "statusPending": "請求中",
+            "statusStreaming": "傳輸中",
+            "responsePending": "（回應傳輸中…）"
         }
     },
     "channel": {
         "card": {
             "requestCount": "請求次數",
-            "totalCost": "總成本",
+            "totalCost": "成本消耗",
             "toast": {
                 "enabled": "供應源已啟用",
                 "disabled": "供應源已停用"
-            }
+            },
+            "totalToken": "總 Token"
         },
         "detail": {
             "title": {
@@ -498,14 +654,19 @@
             "metrics": {
                 "totalRequests": "總請求",
                 "totalToken": "總 Token",
-                "totalCost": "總成本",
+                "totalCost": "成本消耗",
                 "successRequests": "成功請求",
                 "failedRequests": "失敗請求",
                 "inputToken": "輸入 Token",
                 "outputToken": "輸出 Token",
                 "inputCost": "輸入成本",
                 "outputCost": "輸出成本",
-                "avgWaitTime": "等待時間"
+                "avgWaitTime": "等待時間",
+                "cacheReadToken": "快取讀 Token",
+                "cacheWriteToken": "快取寫 Token",
+                "cacheReadCost": "快取讀成本",
+                "cacheWriteCost": "快取寫成本",
+                "successRate": "成功率"
             },
             "actions": {
                 "edit": "編輯",
@@ -605,6 +766,94 @@
             "periodStart": "開始時間",
             "usedCost": "已用開支",
             "resetCost": "重置開支"
+        }
+    },
+    "llminfo": {
+        "card": {
+            "copy": "複製模型名稱",
+            "info": "詳情",
+            "edit": "編輯",
+            "inputCache": "輸入/快取",
+            "outputCache": "輸出/快取"
+        },
+        "info": {
+            "request": "請求詳情",
+            "stats": "統計",
+            "price": "價格（硬幣/M tokens）",
+            "instruction": "介紹",
+            "endpoint": "接口端點",
+            "contextLimit": "上下文上限",
+            "outputLimit": "輸出上限",
+            "inputType": "輸入類型",
+            "outputType": "輸出類型",
+            "inputPrice": "輸入",
+            "outputPrice": "輸出",
+            "cacheReadPrice": "快取讀取",
+            "cacheWritePrice": "快取寫入",
+            "requestCount": "請求次數",
+            "totalToken": "總 Token",
+            "tools": "工具調用",
+            "reasoning": "推理能力",
+            "structured": "結構化輸出",
+            "temperature": "溫度控制",
+            "successRequests": "成功請求",
+            "failedRequests": "失敗請求",
+            "successRate": "成功率",
+            "totalFunding": "總積分流",
+            "inputToken": "輸入 Token",
+            "outputToken": "輸出 Token",
+            "cacheReadToken": "快取讀 Token",
+            "cacheWriteToken": "快取寫 Token",
+            "inputFunding": "輸入積分流",
+            "outputFunding": "輸出積分流",
+            "cacheReadFunding": "快取讀積分流",
+            "cacheWriteFunding": "快取寫積分流",
+            "totalRequests": "總請求"
+        },
+        "edit": {
+            "title": "編輯模型資訊",
+            "endpoint": "接口端點",
+            "contextLimit": "上下文上限",
+            "outputLimit": "輸出上限",
+            "inputType": "輸入類型",
+            "outputType": "輸出類型",
+            "tools": "工具調用",
+            "reasoning": "推理能力",
+            "structured": "結構化輸出",
+            "temperature": "溫度控制",
+            "inputPrice": "輸入價格",
+            "outputPrice": "輸出價格",
+            "cacheReadPrice": "快取讀取價格",
+            "cacheWritePrice": "快取寫入價格",
+            "instruction": "介紹",
+            "cancel": "取消",
+            "save": "儲存",
+            "name": "模型名稱",
+            "vendor": "廠商",
+            "series": "系列",
+            "capabilitiesSection": "模型能力"
+        },
+        "toast": {
+            "copied": "已複製",
+            "copyFailed": "複製失敗",
+            "updated": "已更新",
+            "updateFailed": "更新失敗",
+            "invalidPrice": "價格格式無效"
+        },
+        "title": {
+            "stats": "模型統計",
+            "detail": "模型詳情",
+            "edit": "編輯模型"
+        },
+        "actions": {
+            "stats": "統計",
+            "detail": "詳情",
+            "edit": "編輯",
+            "saving": "儲存中…",
+            "close": "關閉"
+        },
+        "sections": {
+            "funding": "積分流詳情"
         }
     }
 }

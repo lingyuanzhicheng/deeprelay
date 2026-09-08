@@ -24,10 +24,10 @@ var relayLogFlushLock sync.Mutex
 var relayLogSubscribers = make(map[chan model.RelayLog]struct{})
 var relayLogSubscribersLock sync.RWMutex
 
-var relayLogStreamTokens = make(map[string]struct{})
+var relayLogStreamTokens = make(map[string]string) // token -> api_key_name 范围（空串表示不过滤）
 var relayLogStreamTokensLock sync.RWMutex
 
-func RelayLogStreamTokenCreate() (string, error) {
+func RelayLogStreamTokenCreate(scope string) (string, error) {
 	bytes := make([]byte, 32)
 	if _, err := rand.Read(bytes); err != nil {
 		return "", err
@@ -35,17 +35,18 @@ func RelayLogStreamTokenCreate() (string, error) {
 	token := hex.EncodeToString(bytes)
 
 	relayLogStreamTokensLock.Lock()
-	relayLogStreamTokens[token] = struct{}{}
+	relayLogStreamTokens[token] = scope
 	relayLogStreamTokensLock.Unlock()
 
 	return token, nil
 }
 
-func RelayLogStreamTokenVerify(token string) bool {
+// RelayLogStreamTokenVerify 校验流 token 并返回其数据范围（api_key_name，空串表示不过滤）
+func RelayLogStreamTokenVerify(token string) (string, bool) {
 	relayLogStreamTokensLock.RLock()
-	_, ok := relayLogStreamTokens[token]
+	scope, ok := relayLogStreamTokens[token]
 	relayLogStreamTokensLock.RUnlock()
-	return ok
+	return scope, ok
 }
 
 func RelayLogStreamTokenRevoke(token string) {
@@ -79,6 +80,52 @@ func notifySubscribers(relayLog model.RelayLog) {
 		default:
 		}
 	}
+}
+
+// RelayLogNotify 将进行中的日志进度（pending/streaming）推送给 SSE 订阅者，
+// 同时登记到活跃进度表，供 /log/list 轮询兜底（SSE 被代理缓冲时仍能看到进行中日志）
+func RelayLogNotify(relayLog model.RelayLog) {
+	if relayLog.ID == 0 {
+		relayLog.ID = snowflake.GenerateID()
+	}
+	relayLogProgressLock.Lock()
+	relayLogProgress[relayLog.ID] = progressEntry{log: relayLog, updatedAt: time.Now()}
+	pruneRelayLogProgressLocked()
+	relayLogProgressLock.Unlock()
+	notifySubscribers(relayLog)
+}
+
+// progressEntry 活跃进度条目
+type progressEntry struct {
+	log       model.RelayLog
+	updatedAt time.Time
+}
+
+const relayLogProgressTTL = 15 * time.Minute
+
+var (
+	relayLogProgress     = make(map[int64]progressEntry)
+	relayLogProgressLock sync.RWMutex
+)
+
+func pruneRelayLogProgressLocked() {
+	cutoff := time.Now().Add(-relayLogProgressTTL)
+	for id, entry := range relayLogProgress {
+		if entry.updatedAt.Before(cutoff) {
+			delete(relayLogProgress, id)
+		}
+	}
+}
+
+// RelayLogActiveProgress 返回当前所有进行中的日志（pending/streaming）
+func RelayLogActiveProgress() []model.RelayLog {
+	relayLogProgressLock.RLock()
+	defer relayLogProgressLock.RUnlock()
+	result := make([]model.RelayLog, 0, len(relayLogProgress))
+	for _, entry := range relayLogProgress {
+		result = append(result, entry.log)
+	}
+	return result
 }
 
 func relayLogFlushToDB(ctx context.Context) error {
@@ -123,7 +170,12 @@ func RelayLogAdd(ctx context.Context, relayLog model.RelayLog) error {
 	if !enabled {
 		maxSize = relayLogMaxSizeNoDB
 	}
-	relayLog.ID = snowflake.GenerateID()
+	if relayLog.ID == 0 {
+		relayLog.ID = snowflake.GenerateID()
+	}
+	relayLogProgressLock.Lock()
+	delete(relayLogProgress, relayLog.ID)
+	relayLogProgressLock.Unlock()
 	go notifySubscribers(relayLog)
 
 	relayLogCacheLock.Lock()
@@ -188,24 +240,25 @@ func relayLogCleanup(ctx context.Context) error {
 
 // RelayLogList 查询日志列表，支持可选的时间范围过滤
 // startTime 和 endTime 为 nil 时表示不限制时间范围
-func RelayLogList(ctx context.Context, startTime, endTime *int, page, pageSize int) ([]model.RelayLog, error) {
+// apiKeyName 非空时仅返回该 API Key 的日志（密钥登录场景）
+func RelayLogList(ctx context.Context, startTime, endTime *int, page, pageSize int, apiKeyName string) ([]model.RelayLog, error) {
 	enabled, err := SettingGetBool(model.SettingKeyRelayLogKeepEnabled)
 	if err != nil {
 		return nil, err
 	}
-	hasTimeFilter := startTime != nil && endTime != nil
-
-	// 获取缓存中符合条件的日志
 	relayLogCacheLock.Lock()
 	var cachedLogs []model.RelayLog
 	for _, log := range relayLogCache {
-		if hasTimeFilter {
-			if log.Time >= int64(*startTime) && log.Time <= int64(*endTime) {
-				cachedLogs = append(cachedLogs, log)
-			}
-		} else {
-			cachedLogs = append(cachedLogs, log)
+		if apiKeyName != "" && log.RequestAPIKeyName != apiKeyName {
+			continue
 		}
+		if startTime != nil && log.Time < int64(*startTime) {
+			continue
+		}
+		if endTime != nil && log.Time > int64(*endTime) {
+			continue
+		}
+		cachedLogs = append(cachedLogs, log)
 	}
 	relayLogCacheLock.Unlock()
 
@@ -238,8 +291,14 @@ func RelayLogList(ctx context.Context, startTime, endTime *int, page, pageSize i
 			}
 
 			query := db.GetDB().WithContext(ctx)
-			if hasTimeFilter {
-				query = query.Where("time >= ? AND time <= ?", *startTime, *endTime)
+			if apiKeyName != "" {
+				query = query.Where("request_api_key_name = ?", apiKeyName)
+			}
+			if startTime != nil {
+				query = query.Where("time >= ?", *startTime)
+			}
+			if endTime != nil {
+				query = query.Where("time <= ?", *endTime)
 			}
 
 			var dbLogs []model.RelayLog

@@ -214,15 +214,39 @@ func ChannelLLMPriceSyncFromUpstream(channelID int, upstreamModelNames []string,
 		}
 	}
 
-	if len(toAdd) > 0 {
-		if err := ChannelLLMPriceBatchUpsert(toAdd, ctx); err != nil {
+	if len(toAdd) == 0 && len(toDelete) == 0 {
+		return nil
+	}
+
+	// B2: add 与 delete 必须在同一事务中，避免"新增已入库、删除失败"的半同步状态
+	tx := db.GetDB().WithContext(ctx).Begin()
+	defer func() {
+		if r := recover(); r != nil {
+			tx.Rollback()
+		}
+	}()
+	for i := range toAdd {
+		if err := tx.Save(&toAdd[i]).Error; err != nil {
+			tx.Rollback()
 			return fmt.Errorf("failed to add new channel llm prices: %w", err)
 		}
 	}
 	if len(toDelete) > 0 {
-		if err := ChannelLLMPriceBatchDeleteByChannelAndModels(channelID, toDelete, ctx); err != nil {
+		if err := tx.Where("channel_id = ? AND model_name IN ?", channelID, toDelete).
+			Delete(&model.ChannelLLMPrice{}).Error; err != nil {
+			tx.Rollback()
 			return fmt.Errorf("failed to delete removed channel llm prices: %w", err)
 		}
+	}
+	if err := tx.Commit().Error; err != nil {
+		return err
+	}
+
+	for i := range toAdd {
+		channelLLMPriceCacheSet(toAdd[i])
+	}
+	for _, m := range toDelete {
+		channelLLMPriceCacheDel(channelID, m)
 	}
 	return nil
 }

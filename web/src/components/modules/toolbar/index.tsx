@@ -15,6 +15,7 @@ import { cn } from '@/lib/utils';
 import { useNavStore, type NavItem } from '@/components/modules/navbar';
 import { CreateDialogContent as ChannelCreateContent } from '@/components/modules/channel/Create';
 import { CreateDialogContent as GroupCreateContent } from '@/components/modules/group/Create';
+import { CreateDialogContent as APIKeyCreateContent } from '@/components/modules/apikey/Create';
 import { useTranslations } from 'next-intl';
 import { useSearchStore } from './search-store';
 import {
@@ -54,6 +55,8 @@ function CreateDialogContent({ activeItem }: { activeItem: ToolbarPage }) {
             return <GroupCreateContent />;
         case 'model':
             return null;
+        case 'apikey':
+            return <APIKeyCreateContent />;
     }
 }
 
@@ -65,7 +68,7 @@ export function Toolbar() {
     const setSearchTerm = useSearchStore((s) => s.setSearchTerm);
     const layout = useToolbarViewOptionsStore((s) => (toolbarItem ? s.getLayout(toolbarItem) : 'grid'));
     const sortField = useToolbarViewOptionsStore((s) =>
-        toolbarItem === 'channel' || toolbarItem === 'group' ? s.getSortField(toolbarItem) : 'name'
+        toolbarItem === 'channel' || toolbarItem === 'group' || toolbarItem === 'model' || toolbarItem === 'apikey' || toolbarItem === 'llminfo' ? s.getSortField(toolbarItem) : 'name'
     );
     const sortOrder = useToolbarViewOptionsStore((s) => (toolbarItem ? s.getSortOrder(toolbarItem) : 'asc'));
     const setLayout = useToolbarViewOptionsStore((s) => s.setLayout);
@@ -79,9 +82,9 @@ export function Toolbar() {
     const searchExpanded = expandedSearchItem === toolbarItem;
 
     if (!toolbarItem) return null;
-    const showLayoutOptions = toolbarItem !== 'group';
-    const showCombinedSortOptions = toolbarItem === 'channel' || toolbarItem === 'group';
-    const showFilterOptions = toolbarItem === 'channel' || toolbarItem === 'group';
+    const showLayoutOptions = toolbarItem !== 'group' && toolbarItem !== 'model' && toolbarItem !== 'llminfo';
+    const showCombinedSortOptions = toolbarItem === 'channel' || toolbarItem === 'group' || toolbarItem === 'model' || toolbarItem === 'apikey' || toolbarItem === 'llminfo';
+    const showFilterOptions = toolbarItem === 'channel' || toolbarItem === 'group' || toolbarItem === 'model';
 
     const channelFilterLabelKeys: Record<ChannelFilter, string> = {
         all: 'popover.filter.channel.all',
@@ -94,7 +97,7 @@ export function Toolbar() {
         empty: 'popover.filter.group.empty',
     };
 
-    const filterOptions = toolbarItem === 'channel'
+    const filterOptions = toolbarItem === 'channel' || toolbarItem === 'model'
         ? CHANNEL_FILTER_OPTIONS.map((value) => ({
             value,
             label: t(channelFilterLabelKeys[value]),
@@ -106,7 +109,7 @@ export function Toolbar() {
             }))
             : [];
 
-    const activeFilter = toolbarItem === 'channel'
+    const activeFilter = toolbarItem === 'channel' || toolbarItem === 'model'
         ? channelFilter
         : toolbarItem === 'group'
             ? groupFilter
@@ -115,6 +118,7 @@ export function Toolbar() {
     const handleFilterChange = (value: string) => {
         switch (toolbarItem) {
             case 'channel':
+            case 'model':
                 setChannelFilter(value as ChannelFilter);
                 break;
             case 'group':
@@ -234,7 +238,7 @@ export function Toolbar() {
                                                 key={option.value}
                                                 type="button"
                                                 onClick={() => {
-                                                    if (toolbarItem === 'channel' || toolbarItem === 'group') {
+                                                    if (toolbarItem === 'channel' || toolbarItem === 'group' || toolbarItem === 'model' || toolbarItem === 'apikey' || toolbarItem === 'llminfo') {
                                                         setSortConfig(toolbarItem, option.field, option.order);
                                                     }
                                                 }}
@@ -309,7 +313,7 @@ export function Toolbar() {
                 </Popover>
 
                 {/* 创建按钮 */}
-                {toolbarItem !== 'model' && (
+                {toolbarItem !== 'model' && toolbarItem !== 'llminfo' && (
                     <MorphingDialog>
                         <MorphingDialogTrigger className={buttonVariants({ variant: "ghost", size: "icon", className: "rounded-xl transition-none hover:bg-transparent text-muted-foreground hover:text-foreground" })}>
                             <Plus className="size-4 transition-colors duration-300" />

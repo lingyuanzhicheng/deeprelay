@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useRef } from 'react';
 import { useTranslations } from 'next-intl';
-import { DollarSign, Clock, RefreshCw } from 'lucide-react';
+import { Coins, Clock, RefreshCw } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { useSettingList, useSetSetting, SettingKey } from '@/api/endpoints/setting';
@@ -61,7 +61,7 @@ export function SettingLLMPrice() {
     return (
         <div className="rounded-3xl border border-border bg-card p-6 space-y-5">
             <h2 className="text-lg font-bold text-card-foreground flex items-center gap-2">
-                <DollarSign className="h-5 w-5" />
+                <Coins className="h-5 w-5" />
                 {t('llmPrice.title')}
             </h2>
 

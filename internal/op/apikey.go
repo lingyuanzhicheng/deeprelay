@@ -7,6 +7,7 @@ import (
 	"github.com/lingyuanzhicheng/deeprelay/internal/db"
 	"github.com/lingyuanzhicheng/deeprelay/internal/model"
 	"github.com/lingyuanzhicheng/deeprelay/internal/utils/cache"
+	"gorm.io/gorm"
 )
 
 var apiKeyCache = cache.New[int, model.APIKey](16)
@@ -74,6 +75,48 @@ func APIKeyDelete(id int, ctx context.Context) error {
 	}
 	apiKeyCache.Del(k.ID)
 	apiKeyIDMap.Del(k.APIKey)
+	return nil
+}
+
+func APIKeyReset(id int, newKey string, ctx context.Context) (model.APIKey, error) {
+	existing, ok := apiKeyCache.Get(id)
+	if !ok {
+		return model.APIKey{}, fmt.Errorf("API key not found")
+	}
+	if newKey == "" {
+		return model.APIKey{}, fmt.Errorf("new key is empty")
+	}
+	if err := db.GetDB().WithContext(ctx).
+		Model(&model.APIKey{}).
+		Where("id = ?", id).
+		Update("api_key", newKey).Error; err != nil {
+		return model.APIKey{}, fmt.Errorf("failed to reset API key: %w", err)
+	}
+	apiKeyIDMap.Del(existing.APIKey)
+	existing.APIKey = newKey
+	apiKeyCache.Set(id, existing)
+	apiKeyIDMap.Set(newKey, id)
+	return existing, nil
+}
+
+// APIKeyIncRevenue 累加密钥收入（售价侧），DB 表达式累加保证并发不丢增量。
+func APIKeyIncRevenue(id int, revenue float64) error {
+	if id == 0 {
+		return fmt.Errorf("invalid api key")
+	}
+	if revenue == 0 {
+		return nil
+	}
+	if err := db.GetDB().WithContext(context.Background()).
+		Model(&model.APIKey{}).
+		Where("id = ?", id).
+		Update("revenue", gorm.Expr("revenue + ?", revenue)).Error; err != nil {
+		return fmt.Errorf("failed to inc api key revenue: %w", err)
+	}
+	if key, ok := apiKeyCache.Get(id); ok {
+		key.Revenue += revenue
+		apiKeyCache.Set(id, key)
+	}
 	return nil
 }
 

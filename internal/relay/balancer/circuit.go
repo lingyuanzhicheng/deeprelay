@@ -24,7 +24,8 @@ type circuitEntry struct {
 	State               CircuitState
 	ConsecutiveFailures int64
 	LastFailureTime     time.Time
-	TripCount           int // 累计熔断触发次数（用于指数退避）
+	LastActiveTime      time.Time // 最近一次成功或失败请求时间（用于统计活跃窗口）
+	TripCount           int       // 累计熔断触发次数（用于指数退避）
 	mu                  sync.Mutex
 }
 
@@ -41,7 +42,7 @@ func getOrCreateEntry(key string) *circuitEntry {
 	if v, ok := globalBreaker.Load(key); ok {
 		return v.(*circuitEntry)
 	}
-	entry := &circuitEntry{State: StateClosed}
+	entry := &circuitEntry{State: StateClosed, LastActiveTime: time.Now()}
 	actual, _ := globalBreaker.LoadOrStore(key, entry)
 	return actual.(*circuitEntry)
 }
@@ -119,17 +120,15 @@ func IsTripped(channelID, keyID int, modelName string) (tripped bool, remaining 
 	}
 }
 
-// RecordSuccess 记录成功，重置熔断器状态
+// RecordSuccess 记录成功，登记三元组监控并重置熔断器状态
 func RecordSuccess(channelID, keyID int, modelName string) {
 	key := circuitKey(channelID, keyID, modelName)
-	v, ok := globalBreaker.Load(key)
-	if !ok {
-		return
-	}
-	entry := v.(*circuitEntry)
+	entry := getOrCreateEntry(key)
 
 	entry.mu.Lock()
 	defer entry.mu.Unlock()
+
+	entry.LastActiveTime = time.Now()
 
 	if entry.State == StateHalfOpen {
 		log.Infof("circuit breaker [%s] HalfOpen -> Closed (probe succeeded)", key)
@@ -141,6 +140,27 @@ func RecordSuccess(channelID, keyID int, modelName string) {
 	entry.TripCount = 0
 }
 
+// breakerStatsActiveWindow 熔断统计的活跃窗口：仅统计最近一次请求在该窗口内的三元组
+const breakerStatsActiveWindow = 24 * time.Hour
+
+// GetStats 返回熔断器统计：活跃窗口内监控的三元组总数与当前未熔断（Closed）的数量
+func GetStats() (total int64, healthy int64) {
+	cutoff := time.Now().Add(-breakerStatsActiveWindow)
+	globalBreaker.Range(func(_, v any) bool {
+		entry := v.(*circuitEntry)
+		entry.mu.Lock()
+		if entry.LastActiveTime.After(cutoff) {
+			total++
+			if entry.State == StateClosed {
+				healthy++
+			}
+		}
+		entry.mu.Unlock()
+		return true
+	})
+	return total, healthy
+}
+
 // RecordFailure 记录失败，可能触发熔断
 func RecordFailure(channelID, keyID int, modelName string) {
 	key := circuitKey(channelID, keyID, modelName)
@@ -150,6 +170,7 @@ func RecordFailure(channelID, keyID int, modelName string) {
 	defer entry.mu.Unlock()
 
 	entry.LastFailureTime = time.Now()
+	entry.LastActiveTime = time.Now()
 
 	switch entry.State {
 	case StateClosed:

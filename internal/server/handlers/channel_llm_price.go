@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"errors"
 	"net/http"
 	"strconv"
 
@@ -11,6 +12,15 @@ import (
 	"github.com/lingyuanzhicheng/deeprelay/internal/server/resp"
 	"github.com/lingyuanzhicheng/deeprelay/internal/server/router"
 )
+
+// respondModelsDevCacheNotReady 统一把 ErrCacheNotReady 映射为 503 + 业务码 503。
+func respondModelsDevCacheNotReady(c *gin.Context, err error) {
+	if errors.Is(err, op.ErrCacheNotReady) {
+		resp.Error(c, http.StatusServiceUnavailable, "modelsdev cache not ready, please sync first")
+		return
+	}
+	resp.Error(c, http.StatusInternalServerError, err.Error())
+}
 
 func init() {
 	router.NewGroupRouter("/api/v1/channel-llm-price").
@@ -156,7 +166,7 @@ func autoMatchChannelLLMPrice(c *gin.Context) {
 	}
 	matched, err := op.ChannelLLMPriceAutoMatch(req, c.Request.Context())
 	if err != nil {
-		resp.Error(c, http.StatusInternalServerError, err.Error())
+		respondModelsDevCacheNotReady(c, err)
 		return
 	}
 	resp.Success(c, gin.H{"matched": matched})
@@ -183,7 +193,7 @@ func syncModelsDev(c *gin.Context) {
 func listModelsDevProviders(c *gin.Context) {
 	providers, err := op.ModelsDevProviders(c.Request.Context())
 	if err != nil {
-		resp.Error(c, http.StatusInternalServerError, err.Error())
+		respondModelsDevCacheNotReady(c, err)
 		return
 	}
 	resp.Success(c, providers)
@@ -197,7 +207,7 @@ func listModelsDevModels(c *gin.Context) {
 	}
 	models, err := op.ModelsDevModels(provider, c.Request.Context())
 	if err != nil {
-		resp.Error(c, http.StatusInternalServerError, err.Error())
+		respondModelsDevCacheNotReady(c, err)
 		return
 	}
 	resp.Success(c, models)

@@ -38,6 +38,9 @@ func DBExportAll(ctx context.Context, includeLogs, includeStats bool) (*model.DB
 	if err := conn.Find(&d.LLMInfos).Error; err != nil {
 		return nil, fmt.Errorf("export llm_infos: %w", err)
 	}
+	if err := conn.Find(&d.ChannelLLMPrices).Error; err != nil {
+		return nil, fmt.Errorf("export channel_llm_prices: %w", err)
+	}
 	if err := conn.Find(&d.APIKeys).Error; err != nil {
 		return nil, fmt.Errorf("export api_keys: %w", err)
 	}
@@ -109,10 +112,15 @@ func DBImportIncremental(ctx context.Context, dump *model.DBDump) (*model.DBImpo
 		} else {
 			res.RowsAffected["group_items"] = n
 		}
-		if n, err := createUpsertAll(tx, dump.LLMInfos, []clause.Column{{Name: "name"}}); err != nil {
+		if n, err := createUpsertAll(tx, dump.LLMInfos, []clause.Column{{Name: "group_id"}}); err != nil {
 			return fmt.Errorf("import llm_infos: %w", err)
 		} else {
 			res.RowsAffected["llm_infos"] = n
+		}
+		if n, err := createUpsertAll(tx, dump.ChannelLLMPrices, []clause.Column{{Name: "channel_id"}, {Name: "model_name"}}); err != nil {
+			return fmt.Errorf("import channel_llm_prices: %w", err)
+		} else {
+			res.RowsAffected["channel_llm_prices"] = n
 		}
 		if n, err := createDoNothing(tx, dump.APIKeys); err != nil {
 			return fmt.Errorf("import api_keys: %w", err)
@@ -141,7 +149,7 @@ func DBImportIncremental(ctx context.Context, dump *model.DBDump) (*model.DBImpo
 			} else {
 				res.RowsAffected["stats_hourly"] = n
 			}
-			if n, err := createUpsertAll(tx, dump.StatsModel, []clause.Column{{Name: "id"}}); err != nil {
+			if n, err := createUpsertAll(tx, dump.StatsModel, []clause.Column{{Name: "group_id"}}); err != nil {
 				return fmt.Errorf("import stats_model: %w", err)
 			} else {
 				res.RowsAffected["stats_model"] = n

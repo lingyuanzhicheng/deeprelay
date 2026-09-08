@@ -7,11 +7,6 @@ type LLMPrice struct {
 	CacheWrite float64 `json:"cache_write"`
 }
 
-type LLMInfo struct {
-	Name string `json:"name" gorm:"primaryKey;not null"`
-	LLMPrice
-}
-
 type LLMChannel struct {
 	Name        string `json:"name"`
 	Enabled     bool   `json:"enabled"`

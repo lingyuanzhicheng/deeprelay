@@ -49,6 +49,13 @@ func getModelList(c *gin.Context) {
 			return lo.Contains(supportedModels, m)
 		})
 	}
+	aliasNames := []string{"deeprelay-pro", "deeprelay-flash", "deeprelay-vision"}
+	aliasValues := []string{apiKey.ModelPro, apiKey.ModelFlash, apiKey.ModelVision}
+	for i, name := range aliasNames {
+		if aliasValues[i] != "" {
+			models = append(models, name)
+		}
+	}
 
 	if c.GetString("request_type") == "anthropic" {
 		var anthropicModels []model.AnthropicModel

@@ -24,6 +24,9 @@ func InitCache() error {
 	if err := channelLLMPriceRefreshCache(ctx); err != nil {
 		return fmt.Errorf("channel llm price refresh cache error: %v", err)
 	}
+	if err := llminfoRefreshCache(ctx); err != nil {
+		return fmt.Errorf("llminfo refresh cache error: %v", err)
+	}
 	if err := statsRefreshCache(ctx); err != nil {
 		return fmt.Errorf("stats refresh cache error: %v", err)
 	}

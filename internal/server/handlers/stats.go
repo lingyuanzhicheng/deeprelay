@@ -2,7 +2,9 @@ package handlers
 
 import (
 	"net/http"
+	"time"
 
+	"github.com/lingyuanzhicheng/deeprelay/internal/relay/balancer"
 	"github.com/lingyuanzhicheng/deeprelay/internal/op"
 	"github.com/lingyuanzhicheng/deeprelay/internal/server/middleware"
 	"github.com/lingyuanzhicheng/deeprelay/internal/server/resp"
@@ -32,6 +34,14 @@ func init() {
 		AddRoute(
 			router.NewRoute("/apikey", http.MethodGet).
 				Handle(getStatsAPIKey),
+		).
+		AddRoute(
+			router.NewRoute("/realtime", http.MethodGet).
+				Handle(getStatsRealtime),
+		).
+		AddRoute(
+			router.NewRoute("/breaker", http.MethodGet).
+				Handle(getStatsBreaker),
 		)
 }
 
@@ -58,4 +68,21 @@ func getStatsTotal(c *gin.Context) {
 
 func getStatsAPIKey(c *gin.Context) {
 	resp.Success(c, op.StatsAPIKeyList())
+}
+
+func getStatsRealtime(c *gin.Context) {
+	r, err := op.StatsRealtimeGet(c.Request.Context(), time.Minute)
+	if err != nil {
+		resp.Error(c, http.StatusInternalServerError, err.Error())
+		return
+	}
+	resp.Success(c, r)
+}
+
+func getStatsBreaker(c *gin.Context) {
+	total, healthy := balancer.GetStats()
+	resp.Success(c, gin.H{
+		"total":   total,
+		"healthy": healthy,
+	})
 }

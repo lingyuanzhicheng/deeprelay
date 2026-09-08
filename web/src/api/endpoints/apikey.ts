@@ -2,8 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { apiClient } from '../client';
 import { logger } from '@/lib/logger';
 import { useAuthStore } from './user';
-import { StatsAPIKey, StatsAPIKeyFormatted } from './stats';
-import { formatCount, formatMoney, formatTime } from '@/lib/utils';
+import { StatsAPIKey, StatsAPIKeyFormatted, formatMetricsCoin } from './stats';
 
 /**
  * API Key 数据
@@ -16,6 +15,11 @@ export interface APIKey {
     expire_at?: number; // Unix 时间戳（秒），不传表示永不过期
     max_cost?: number; // 不传表示无限制
     supported_models?: string; // 不传表示支持所有模型
+    unlimited_models?: boolean; // true 时忽略 supported_models，允许全部模型
+    revenue?: number; // 累计收入（售价侧）
+    model_pro?: string;
+    model_flash?: string;
+    model_vision?: string;
 }
 
 /**
@@ -62,22 +66,29 @@ export function useAPIKeyDashboardStats() {
         queryFn: () => apiClient.get<APIKeyStatsResponse>('/api/v1/apikey/stats'),
         select: (data): APIKeyStatsResponseFormatted => ({
             stats: {
+                ...formatMetricsCoin(data.stats),
                 api_key_id: data.stats.api_key_id,
-                input_token: formatCount(data.stats.input_token),
-                output_token: formatCount(data.stats.output_token),
-                total_token: formatCount(data.stats.input_token + data.stats.output_token),
-                input_cost: formatMoney(data.stats.input_cost),
-                output_cost: formatMoney(data.stats.output_cost),
-                total_cost: formatMoney(data.stats.input_cost + data.stats.output_cost),
-                wait_time: formatTime(data.stats.wait_time),
-                request_success: formatCount(data.stats.request_success),
-                request_failed: formatCount(data.stats.request_failed),
-                request_count: formatCount(data.stats.request_success + data.stats.request_failed),
             },
             info: data.info,
         }),
         enabled: isAPIKeyAuth && isAuthenticated,
         refetchInterval: 30000,
+    });
+}
+
+/**
+ * 密钥登录模式下重置当前密钥
+ *
+ * @example
+ * const resetOwn = useAPIKeySelfReset();
+ *
+ * resetOwn.mutate(undefined, { onSuccess: (data) => console.log(data.api_key) });
+ */
+export function useAPIKeySelfReset() {
+    return useMutation({
+        mutationFn: async () => {
+            return apiClient.post<{ api_key: string }>('/api/v1/apikey/me/reset', {});
+        },
     });
 }
 
@@ -194,10 +205,35 @@ export function useDeleteAPIKey() {
 }
 
 /**
+ * 重置 API Key 密钥值 Hook
+ *
+ * @example
+ * const resetAPIKey = useResetAPIKey();
+ *
+ * resetAPIKey.mutate(1); // 重置 ID 为 1 的 API Key
+ */
+export function useResetAPIKey() {
+    const queryClient = useQueryClient();
+
+    return useMutation({
+        mutationFn: async (id: number) => {
+            return apiClient.post<APIKey>(`/api/v1/apikey/reset/${id}`, {});
+        },
+        onSuccess: (data) => {
+            logger.log('API Key 重置成功:', data);
+            queryClient.invalidateQueries({ queryKey: ['apikeys', 'list'] });
+        },
+        onError: (error) => {
+            logger.error('API Key 重置失败:', error);
+        },
+    });
+}
+
+/**
  * 获取当前 API Key 的统计数据 Hook
- * 
+ *
  * 此接口使用 API Key 认证，通过 API Key 获取对应的统计数据
- * 
+ *
  * @example
  * const { data: stats, isLoading } = useAPIKeyStats();
  */
@@ -208,17 +244,8 @@ export function useAPIKeyStats() {
             return apiClient.get<StatsAPIKey>('/api/v1/apikey/stats');
         },
         select: (data): StatsAPIKeyFormatted => ({
+            ...formatMetricsCoin(data),
             api_key_id: data.api_key_id,
-            input_token: formatCount(data.input_token),
-            output_token: formatCount(data.output_token),
-            total_token: formatCount(data.input_token + data.output_token),
-            input_cost: formatMoney(data.input_cost),
-            output_cost: formatMoney(data.output_cost),
-            total_cost: formatMoney(data.input_cost + data.output_cost),
-            wait_time: formatTime(data.wait_time),
-            request_success: formatCount(data.request_success),
-            request_failed: formatCount(data.request_failed),
-            request_count: formatCount(data.request_success + data.request_failed),
         }),
         refetchInterval: 30000,
         refetchOnMount: 'always',

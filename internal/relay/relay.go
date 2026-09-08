@@ -25,6 +25,25 @@ import (
 	"github.com/tmaxmax/go-sse"
 )
 
+// resolveModelAlias 检测请求模型是否为固定别名名（deeprelay-pro/flash/vision）。
+// 返回值：(实际分组名, 错误信息)。resolvedModel 非空时跳过后续白名单检查。
+// 为空且无错误时表示非别名请求，由调用方决定是否做白名单检查。
+func resolveModelAlias(modelName string, c *gin.Context) (string, string) {
+	aliasMap := map[string]string{
+		"deeprelay-pro":    c.GetString("api_key_model_pro"),
+		"deeprelay-flash":  c.GetString("api_key_model_flash"),
+		"deeprelay-vision": c.GetString("api_key_model_vision"),
+	}
+	alias, ok := aliasMap[modelName]
+	if !ok {
+		return "", ""
+	}
+	if alias == "" {
+		return "", "model " + modelName + " not configured"
+	}
+	return alias, ""
+}
+
 // Handler 处理入站请求并转发到上游服务
 func Handler(inboundType inbound.InboundType, c *gin.Context) {
 	// 解析请求
@@ -32,20 +51,32 @@ func Handler(inboundType inbound.InboundType, c *gin.Context) {
 	if err != nil {
 		return
 	}
+	unlimitedModels := c.GetBool("api_key_unlimited_models")
 	supportedModels := c.GetString("supported_models")
-	if supportedModels != "" {
-		supportedModelsArray := strings.Split(supportedModels, ",")
-		if !slices.Contains(supportedModelsArray, internalRequest.Model) {
-			resp.Error(c, http.StatusBadRequest, "model not supported")
-			return
+
+	// 路由别名：deeprelay-pro/flash/vision 这三个固定名始终放行（不受白名单限制），
+	// 实际指向由密钥的 ModelPro/Flash/Vision 字段决定；为空则返回 model not configured。
+	resolvedModel, aliasErr := resolveModelAlias(internalRequest.Model, c)
+	if aliasErr != "" {
+		resp.Error(c, http.StatusBadRequest, aliasErr)
+		return
+	}
+	if resolvedModel == "" {
+		if !unlimitedModels {
+			supportedModelsArray := strings.Split(supportedModels, ",")
+			if !slices.Contains(supportedModelsArray, internalRequest.Model) {
+				resp.Error(c, http.StatusBadRequest, "model not supported")
+				return
+			}
 		}
+		resolvedModel = internalRequest.Model
 	}
 
-	requestModel := internalRequest.Model
+	requestModel := resolvedModel
 	apiKeyID := c.GetInt("api_key_id")
 
 	// 获取通道分组
-	group, err := op.GroupGetEnabledMap(requestModel, c.Request.Context())
+	group, err := op.GroupGetEnabledMap(resolvedModel, c.Request.Context())
 	if err != nil {
 		resp.Error(c, http.StatusNotFound, "model not found")
 		return
@@ -59,7 +90,8 @@ func Handler(inboundType inbound.InboundType, c *gin.Context) {
 	}
 
 	// 初始化 Metrics
-	metrics := NewRelayMetrics(apiKeyID, requestModel, internalRequest)
+	metrics := NewRelayMetrics(apiKeyID, requestModel, internalRequest, group.ID)
+	metrics.NotifyProgress("pending")
 
 	// 请求级上下文
 	req := &relayRequest{
@@ -194,17 +226,11 @@ func (ra *relayAttempt) attempt() attemptResult {
 	if fwdErr == nil {
 		// ====== 成功 ======
 		ra.collectResponse()
-		if err := op.ChannelKeyIncCost(ra.usedKey, ra.metrics.Stats.InputCost+ra.metrics.Stats.OutputCost); err != nil {
+		if err := op.ChannelKeyIncCost(ra.usedKey, ra.metrics.Stats.Total()); err != nil {
 			log.Warnf("failed to update key cost: %v", err)
 		}
 
 		span.End(dbmodel.AttemptSuccess, statusCode, "")
-
-		// Channel 维度统计
-		op.StatsChannelUpdate(ra.channel.ID, dbmodel.StatsMetrics{
-			WaitTime:       span.Duration().Milliseconds(),
-			RequestSuccess: 1,
-		})
 
 		// 熔断器：记录成功
 		balancer.RecordSuccess(ra.channel.ID, ra.usedKey.ID, ra.internalRequest.Model)
@@ -219,12 +245,6 @@ func (ra *relayAttempt) attempt() attemptResult {
 	// ====== 失败 ======
 	op.ChannelKeyUpdate(ra.usedKey)
 	span.End(dbmodel.AttemptFailed, statusCode, fwdErr.Error())
-
-	// Channel 维度统计
-	op.StatsChannelUpdate(ra.channel.ID, dbmodel.StatsMetrics{
-		WaitTime:      span.Duration().Milliseconds(),
-		RequestFailed: 1,
-	})
 
 	// 熔断器：记录失败
 	balancer.RecordFailure(ra.channel.ID, ra.usedKey.ID, ra.internalRequest.Model)
@@ -449,6 +469,7 @@ func (ra *relayAttempt) handleStreamResponse(ctx context.Context, response *http
 			}
 			if firstToken {
 				ra.metrics.SetFirstTokenTime(time.Now())
+				ra.metrics.NotifyProgress("streaming")
 				firstToken = false
 				if firstTokenTimer != nil {
 					if !firstTokenTimer.Stop() {
