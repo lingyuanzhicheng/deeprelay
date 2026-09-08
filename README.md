@@ -29,18 +29,28 @@
 
 ### 🐳 Docker
 
-Run directly:
+Build from source and run with docker compose (recommended):
+
+```bash
+git clone https://github.com/lingyuanzhicheng/deeprelay.git
+cd deeprelay
+docker compose up -d --build
+```
+
+This multi-stage build compiles the frontend, embeds it into the Go binary, and produces a lightweight Alpine image. Data is persisted in the `./data` directory next to `docker-compose.yml`.
+
+Or pull the prebuilt image directly:
 
 ```bash
 docker run -d --name deeprelay -v /path/to/data:/app/data -p 8080:8080 lingyuanzhicheng/deeprelay
 ```
 
-Or use docker compose:
+**Docker Environment Variables:**
 
-```bash
-wget https://raw.githubusercontent.com/lingyuanzhicheng/deeprelay/refs/heads/dev/docker-compose.yml
-docker compose up -d
-```
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `TZ` | Container timezone | `Asia/Shanghai` |
+| `PUID` / `PGID` | Run the process as a non-root user (optional) | `0` / `0` |
 
 
 ### 📦 Download from Release
@@ -175,60 +185,7 @@ All configuration options can be overridden via environment variables using the 
 | `DEEPRELAY_IMAGES_BODY_TMP_DIR` | Images request body temporary directory (optional, default `./cache`) |
 | `DEEPRELAY_IMAGES_BODY_TMP_CLEANUP_HOURS` | Startup cleanup threshold for temporary files (optional, default 24) |
 
-## 📸 Screenshots
-
-### 🖥️ Desktop
-
-<div align="center">
-<table>
-<tr>
-<td align="center"><b>Dashboard</b></td>
-<td align="center"><b>Channel Management</b></td>
-<td align="center"><b>Group Management</b></td>
-</tr>
-<tr>
-<td><img src="web/public/screenshot/desktop-home.png" alt="Dashboard" width="400"></td>
-<td><img src="web/public/screenshot/desktop-channel.png" alt="Channel" width="400"></td>
-<td><img src="web/public/screenshot/desktop-group.png" alt="Group" width="400"></td>
-</tr>
-<tr>
-<td align="center"><b>Price Management</b></td>
-<td align="center"><b>Logs</b></td>
-<td align="center"><b>Settings</b></td>
-</tr>
-<tr>
-<td><img src="web/public/screenshot/desktop-price.png" alt="Price Management" width="400"></td>
-<td><img src="web/public/screenshot/desktop-log.png" alt="Logs" width="400"></td>
-<td><img src="web/public/screenshot/desktop-setting.png" alt="Settings" width="400"></td>
-</tr>
-</table>
-</div>
-
-### 📱 Mobile
-
-<div align="center">
-<table>
-<tr>
-<td align="center"><b>Home</b></td>
-<td align="center"><b>Channel</b></td>
-<td align="center"><b>Group</b></td>
-<td align="center"><b>Price</b></td>
-<td align="center"><b>Logs</b></td>
-<td align="center"><b>Settings</b></td>
-</tr>
-<tr>
-<td><img src="web/public/screenshot/mobile-home.png" alt="Mobile Home" width="140"></td>
-<td><img src="web/public/screenshot/mobile-channel.png" alt="Mobile Channel" width="140"></td>
-<td><img src="web/public/screenshot/mobile-group.png" alt="Mobile Group" width="140"></td>
-<td><img src="web/public/screenshot/mobile-price.png" alt="Mobile Price" width="140"></td>
-<td><img src="web/public/screenshot/mobile-log.png" alt="Mobile Logs" width="140"></td>
-<td><img src="web/public/screenshot/mobile-setting.png" alt="Mobile Settings" width="140"></td>
-</tr>
-</table>
-</div>
-
-
-## 📖 Documentation
+##  Documentation
 
 ### 📡 Channel Management
 
