@@ -1,0 +1,19 @@
+services:
+  deeprelay:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        - APP_VERSION=latest
+    image: lingyuanzhicheng/deeprelay:latest
+    container_name: deeprelay
+    ports:
+      - '8080:8080'
+    volumes:
+      - './data:/app/data'
+    environment:
+      - TZ=Asia/Shanghai
+      # 以非 root 运行时取消注释：
+      # - PUID=1000
+      # - PGID=1000
+    restart: unless-stopped

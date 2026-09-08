@@ -1,0 +1,105 @@
+package handlers
+
+import (
+	"net/http"
+	"strings"
+
+	"github.com/lingyuanzhicheng/deeprelay/internal/model"
+	"github.com/lingyuanzhicheng/deeprelay/internal/op"
+	"github.com/lingyuanzhicheng/deeprelay/internal/server/middleware"
+	"github.com/lingyuanzhicheng/deeprelay/internal/server/resp"
+	"github.com/lingyuanzhicheng/deeprelay/internal/server/router"
+	"github.com/gin-gonic/gin"
+	"github.com/samber/lo"
+)
+
+func init() {
+	router.NewGroupRouter("/api/v1/model").
+		Use(middleware.Auth()).
+		Use(middleware.RequireJSON()).
+		AddRoute(
+			router.NewRoute("/channel", http.MethodGet).
+				Handle(listLLMByChannel),
+		)
+	router.NewGroupRouter("/v1").
+		Use(middleware.APIKeyAuth()).
+		AddRoute(
+			router.NewRoute("/models", http.MethodGet).
+				Handle(getModelList),
+		)
+}
+
+func getModelList(c *gin.Context) {
+	models, err := op.GroupListModel(c.Request.Context())
+	if err != nil {
+		resp.Error(c, http.StatusInternalServerError, err.Error())
+		return
+	}
+	apiKeyId := c.GetInt("api_key_id")
+	apiKey, err := op.APIKeyGet(apiKeyId, c.Request.Context())
+	if err != nil {
+		resp.Error(c, http.StatusInternalServerError, err.Error())
+		return
+	}
+	if apiKey.SupportedModels != "" {
+		supportedModels := lo.Map(strings.Split(apiKey.SupportedModels, ","), func(s string, _ int) string {
+			return strings.TrimSpace(s)
+		})
+		models = lo.Filter(models, func(m string, _ int) bool {
+			return lo.Contains(supportedModels, m)
+		})
+	}
+	aliasNames := []string{"deeprelay-pro", "deeprelay-flash", "deeprelay-vision"}
+	aliasValues := []string{apiKey.ModelPro, apiKey.ModelFlash, apiKey.ModelVision}
+	for i, name := range aliasNames {
+		if aliasValues[i] != "" {
+			models = append(models, name)
+		}
+	}
+
+	if c.GetString("request_type") == "anthropic" {
+		var anthropicModels []model.AnthropicModel
+		for _, m := range models {
+			anthropicModels = append(anthropicModels, model.AnthropicModel{
+				ID:          m,
+				CreatedAt:   "2024-01-01T00:00:00Z",
+				DisplayName: m,
+				Type:        "model",
+			})
+		}
+		response := gin.H{
+			"data":     anthropicModels,
+			"has_more": false,
+		}
+		if len(anthropicModels) > 0 {
+			response["first_id"] = anthropicModels[0].ID
+			response["last_id"] = anthropicModels[len(anthropicModels)-1].ID
+		}
+		c.JSON(200, response)
+	} else {
+		var openAIModels []model.OpenAIModel
+		for _, m := range models {
+			openAIModels = append(openAIModels, model.OpenAIModel{
+				ID:      m,
+				Object:  "model",
+				Created: 1763395200,
+				OwnedBy: "deeprelay",
+			})
+		}
+		c.JSON(200, gin.H{
+			"success": true,
+			"data":    openAIModels,
+			"object":  "list",
+		})
+	}
+}
+
+func listLLMByChannel(c *gin.Context) {
+	channels, err := op.ChannelLLMList(c.Request.Context())
+	if err != nil {
+		resp.Error(c, http.StatusInternalServerError, err.Error())
+		return
+	}
+	resp.Success(c, channels)
+}
+

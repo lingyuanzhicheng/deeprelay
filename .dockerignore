@@ -1,0 +1,18 @@
+.git
+.codegraph
+.omo
+.github
+data
+build
+*.zip
+deeprelay
+
+# 前端构建依赖与产物（容器内自行安装/生成）
+web/node_modules
+web/out
+web/.next
+web/tsconfig.tsbuildinfo
+
+# 嵌入产物：仅保留 README.md 以满足 go:embed
+static/out/*
+!static/out/README.md
