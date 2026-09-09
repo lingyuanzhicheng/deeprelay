@@ -259,6 +259,11 @@ function TabsContents({
 
     if (!hasMountedRef.current) {
       hasMountedRef.current = true;
+      // 首挂载也立即设定高度：容器挂载时高度为 auto，
+      // 横向轨道会按最高的隐藏面板撑开，导致弹窗初始高度错误
+      if (measured > 0) {
+        setHeight(measured);
+      }
       skipRoRef.current = true;
     } else if (measured > 0) {
       setHeight(measured);
