@@ -52,6 +52,10 @@ func init() {
 		AddRoute(
 			router.NewRoute("/me/reset", http.MethodPost).
 				Handle(resetOwnAPIKey),
+		).
+		AddRoute(
+			router.NewRoute("/me/update", http.MethodPost).
+				Handle(updateOwnAPIKey),
 		)
 }
 
@@ -141,22 +145,19 @@ func getStatsAPIKeyById(c *gin.Context) {
 		return
 	}
 	if info.UnlimitedModels {
-		info.SupportedModels = ""
-	} else {
-		var modelsString string
-		if info.SupportedModels == "" {
-			modelsString = strings.Join(models, ", ")
-		} else {
-			supportedModels := lo.Map(strings.Split(info.SupportedModels, ","), func(s string, _ int) string {
-				return strings.TrimSpace(s)
-			})
-			models = lo.Filter(models, func(m string, _ int) bool {
-				return lo.Contains(supportedModels, m)
-			})
-			modelsString = strings.Join(models, ", ")
-		}
-		info.SupportedModels = modelsString
+		// 无限制模型：支持的模型展示为全部可用分组
+		info.SupportedModels = strings.Join(models, ", ")
+	} else if info.SupportedModels != "" {
+		// 指定了部分模型：过滤出可用的
+		supportedModels := lo.Map(strings.Split(info.SupportedModels, ","), func(s string, _ int) string {
+			return strings.TrimSpace(s)
+		})
+		models = lo.Filter(models, func(m string, _ int) bool {
+			return lo.Contains(supportedModels, m)
+		})
+		info.SupportedModels = strings.Join(models, ", ")
 	}
+	// 既非无限制也未指定模型：SupportedModels 保持为空（不允许任何模型）
 	resp.Success(c, map[string]any{
 		"stats": stats,
 		"info":  info,
@@ -175,6 +176,54 @@ func resetOwnAPIKey(c *gin.Context) {
 	resp.Success(c, map[string]any{
 		"api_key": newKey,
 	})
+}
+
+// updateOwnAPIKey 密钥登录模式下更新当前密钥的内置路由模型绑定。
+// 仅允许修改 model_pro / model_flash / model_vision三个字段，其余字段一律忽略，
+// 且绑定的目标必须为已存在的分组名
+func updateOwnAPIKey(c *gin.Context) {
+	var req struct {
+		ModelPro    *string `json:"model_pro"`
+		ModelFlash  *string `json:"model_flash"`
+		ModelVision *string `json:"model_vision"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		resp.Error(c, http.StatusBadRequest, resp.ErrInvalidJSON)
+		return
+	}
+
+	id := c.GetInt("api_key_id")
+	key, err := op.APIKeyGet(id, c.Request.Context())
+	if err != nil {
+		resp.Error(c, http.StatusNotFound, "API key not found")
+		return
+	}
+
+	targets := []*string{req.ModelPro, req.ModelFlash, req.ModelVision}
+	for _, target := range targets {
+		if target == nil || *target == "" {
+			continue
+		}
+		if _, err := op.GroupGetEnabledMap(*target, c.Request.Context()); err != nil {
+			resp.Error(c, http.StatusBadRequest, "model group not found: "+*target)
+			return
+		}
+	}
+
+	if req.ModelPro != nil {
+		key.ModelPro = *req.ModelPro
+	}
+	if req.ModelFlash != nil {
+		key.ModelFlash = *req.ModelFlash
+	}
+	if req.ModelVision != nil {
+		key.ModelVision = *req.ModelVision
+	}
+	if err := op.APIKeyUpdate(&key, c.Request.Context()); err != nil {
+		resp.Error(c, http.StatusInternalServerError, err.Error())
+		return
+	}
+	resp.Success(c, key)
 }
 
 func loginAPIKey(c *gin.Context) {

@@ -50,11 +50,11 @@ export function Combobox({
 }: ComboboxProps) {
     const [open, setOpen] = useState(false);
     const [query, setQuery] = useState('');
+    const [popoverWidth, setPopoverWidth] = useState<number | 'auto'>('auto');
     const triggerRef = useRef<HTMLButtonElement>(null);
 
-    const hasValue = value !== '';
-    const selectedOpt = hasValue ? options.find((o) => o.key === value) : null;
-    const displayLabel = selectedOpt ? selectedOpt.label : (hasValue ? value : disabledLabel);
+    const selectedOpt = value !== undefined && value !== '' ? options.find((o) => o.key === value) : null;
+    const displayLabel = selectedOpt ? selectedOpt.label : disabledLabel;
 
     const filtered = query === ''
         ? options
@@ -72,6 +72,9 @@ export function Combobox({
     const handleOpenChange = useCallback((o: boolean) => {
         if (disabled) return;
         setOpen(o);
+        if (o && triggerRef.current) {
+            setPopoverWidth(triggerRef.current.offsetWidth);
+        }
         if (!o) setQuery('');
     }, [disabled]);
 
@@ -86,13 +89,13 @@ export function Combobox({
                         disabled={disabled}
                         className={cn(
                             'flex items-center justify-between gap-2 rounded-xl border border-border bg-muted/20 px-3 py-2 text-sm text-muted-foreground transition-colors hover:bg-muted/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50',
-                            hasValue && 'text-foreground',
+                            selectedOpt && 'text-foreground',
                             className,
                             triggerClassName
                         )}
                         style={{ width: '100%' }}
                     >
-                        <span className={cn('truncate', !hasValue && 'text-muted-foreground/60')}>
+                        <span className={cn('truncate', !selectedOpt && 'text-muted-foreground/60')}>
                             {renderValue ? renderValue(value ?? '', disabledLabel) : displayLabel}
                         </span>
                         <ChevronDown className="size-4 shrink-0 opacity-50" />
@@ -100,7 +103,7 @@ export function Combobox({
                 </PopoverTrigger>
                 <PopoverContent
                     className="p-0 overflow-hidden"
-                    style={{ width: triggerRef.current?.offsetWidth ?? 'auto' }}
+                    style={{ width: popoverWidth }}
                     align="start"
                     onOpenAutoFocus={(e) => e.preventDefault()}
                 >
@@ -115,7 +118,24 @@ export function Combobox({
                         />
                     </div>
                     <ul className="max-h-60 overflow-y-auto p-1">
-                        {filtered.length === 0 ? (
+                        {disabledLabel && (
+                            <li>
+                                <button
+                                    type="button"
+                                    onClick={() => handleSelect('')}
+                                    className={cn(
+                                        'w-full flex items-center justify-between gap-2 rounded-lg px-3 py-2 text-sm text-left transition-colors',
+                                        value === undefined || value === ''
+                                            ? 'bg-accent text-accent-foreground font-medium'
+                                            : 'hover:bg-muted text-foreground'
+                                    )}
+                                >
+                                    <span className="truncate">{disabledLabel}</span>
+                                    {(value === undefined || value === '') && <Check className="size-4 shrink-0 text-primary" />}
+                                </button>
+                            </li>
+                        )}
+                        {filtered.length === 0 && !disabledLabel ? (
                             <li className="px-3 py-2 text-sm text-muted-foreground">—</li>
                         ) : (
                             filtered.map((option) => {

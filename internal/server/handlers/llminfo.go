@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"net/http"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 	"github.com/lingyuanzhicheng/deeprelay/internal/model"
@@ -9,6 +10,7 @@ import (
 	"github.com/lingyuanzhicheng/deeprelay/internal/server/middleware"
 	"github.com/lingyuanzhicheng/deeprelay/internal/server/resp"
 	"github.com/lingyuanzhicheng/deeprelay/internal/server/router"
+	"github.com/samber/lo"
 )
 
 type llminfoItem struct {
@@ -61,6 +63,29 @@ func listLLMInfos(c *gin.Context) {
 			Stats:     op.StatsModelGet(group.ID).StatsMetrics,
 		})
 	}
+
+	// 密钥登录：按密钥支持的模型过滤（unlimited 全部可见；未指定任何模型则列表为空）
+	if keyID := c.GetInt("api_key_id"); keyID > 0 {
+		if apiKey, keyErr := op.APIKeyGet(keyID, c.Request.Context()); keyErr == nil {
+			if apiKey.UnlimitedModels {
+				// 全部可见，不过滤
+			} else if strings.TrimSpace(apiKey.SupportedModels) == "" {
+				items = nil
+			} else {
+				allowed := make(map[string]struct{})
+				for _, name := range strings.Split(apiKey.SupportedModels, ",") {
+					if name = strings.TrimSpace(name); name != "" {
+						allowed[name] = struct{}{}
+					}
+				}
+				items = lo.Filter(items, func(item llminfoItem, _ int) bool {
+					_, ok := allowed[item.GroupName]
+					return ok
+				})
+			}
+		}
+	}
+
 	resp.Success(c, items)
 }
 

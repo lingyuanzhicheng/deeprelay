@@ -2,7 +2,8 @@
 
 import { useTranslations } from 'next-intl';
 import { toast } from '@/components/common/Toast';
-import { useAPIKeyDashboardStats } from '@/api/endpoints/apikey';
+import { useAPIKeyDashboardStats, useAPIKeySelfUpdate } from '@/api/endpoints/apikey';
+import { useLLMInfoList } from '@/api/endpoints/llminfo';
 import { useAuthStore } from '@/api/endpoints/user';
 import { AnimatedNumber } from '@/components/common/AnimatedNumber';
 import Logo from '@/components/modules/logo';
@@ -27,8 +28,11 @@ import {
     Gauge,
     Zap,
     Layers,
-    Clock
+    Clock,
+    Route,
 } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+import { Combobox } from '@/components/ui/combobox';
 
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
@@ -131,9 +135,18 @@ export function APIKeyDashboard() {
 
 function DashboardHome() {
     const t = useTranslations('apiKeyDashboard');
+    const tSetting = useTranslations('setting');
     const { data, error } = useAPIKeyDashboardStats();
     const { logout } = useAuthStore();
     const [, copyToClipboard] = useCopyToClipboard();
+    const { data: llmItems } = useLLMInfoList();
+    const updateOwn = useAPIKeySelfUpdate();
+
+    const routingOptions = (llmItems ?? []).map((item) => ({
+        key: item.group_name,
+        label: item.group_name,
+        filterText: item.group_name,
+    }));
 
     const copyWithToast = useCallback(
         async (text: string, label: string) => {
@@ -201,7 +214,7 @@ function DashboardHome() {
     ));
 
     return (
-        <PageWrapper className="space-y-6">
+        <PageWrapper className="h-full min-h-0 overflow-y-auto overscroll-contain space-y-6 pb-24 md:pb-4">
             {/* Hero: Identity + Limits */}
             <div className="overflow-hidden rounded-3xl border bg-card">
                 <div className="grid grid-cols-1 md:grid-cols-2">
@@ -366,8 +379,44 @@ function DashboardHome() {
                 </div>
             </div>
 
+            {/* Routing models */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                {([
+                    { key: 'model_pro', alias: 'deeprelay-pro', group: info.model_pro },
+                    { key: 'model_flash', alias: 'deeprelay-flash', group: info.model_flash },
+                    { key: 'model_vision', alias: 'deeprelay-vision', group: info.model_vision },
+                ] as const).map(({ key, alias, group }) => (
+                    <div key={key} className="rounded-2xl border bg-card p-5 flex flex-col gap-3 min-w-0">
+                        <div className="flex items-center gap-1.5 text-xs font-semibold text-muted-foreground">
+                            <Route className="w-3.5 h-3.5 shrink-0" />
+                            <span className="truncate">{alias}</span>
+                        </div>
+                        <Combobox
+                            options={routingOptions}
+                            value={group || undefined}
+                            disabledLabel={tSetting('apiKey.form.disabled')}
+                            onSelect={(v) => updateOwn.mutate({ [key]: v }, {
+                                onSuccess: () => toast.success(t('routingUpdateSuccess')),
+                            })}
+                            className="w-full rounded-xl border border-border text-sm"
+                        />
+                    </div>
+                ))}
+            </div>
+
             {/* Supported Models */}
-            {info.supported_models && info.supported_models.trim().length > 0 && (
+            {info.unlimited_models ? (
+                <div className="rounded-2xl border bg-card p-6">
+                    <div className="flex items-center gap-2 mb-4">
+                        <Layers className="w-5 h-5 text-chart-3" />
+                        <span className="font-semibold">{t('supportedModels')}</span>
+                        <Badge variant="secondary" className="ml-auto rounded-lg px-2 py-0 text-xs">{t('allModels')}</Badge>
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                        {supportedModelButtons}
+                    </div>
+                </div>
+            ) : supportedModels.length > 0 ? (
                 <div className="rounded-2xl border bg-card p-6">
                     <div className="flex items-center gap-2 mb-4">
                         <Layers className="w-5 h-5 text-chart-3" />
@@ -377,7 +426,7 @@ function DashboardHome() {
                         {supportedModelButtons}
                     </div>
                 </div>
-            )}
+            ) : null}
         </PageWrapper>
     );
 }

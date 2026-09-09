@@ -48,7 +48,12 @@
         "cacheReadTokens": "Cache Read Tokens",
         "cacheWriteCredits": "Cache Write Credits",
         "cacheReadCredits": "Cache Read Credits",
-        "cancel": "Cancel"
+        "cancel": "Cancel",
+        "routingModels": "Routing Models",
+        "allModels": "All models allowed",
+        "noModels": "No models allowed",
+        "routingUpdateSuccess": "Routing model updated",
+        "disabled": "Not set"
     },
     "navbar": {
         "home": "Home",

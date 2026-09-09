@@ -48,7 +48,12 @@
         "cacheReadTokens": "快取讀取 Tokens",
         "cacheWriteCredits": "快取寫入積分",
         "cacheReadCredits": "快取讀取積分",
-        "cancel": "取消"
+        "cancel": "取消",
+        "routingModels": "內建路由模型",
+        "allModels": "支援全部模型",
+        "noModels": "未允許任何模型",
+        "routingUpdateSuccess": "路由模型已更新",
+        "disabled": "未設定"
     },
     "navbar": {
         "home": "主頁",

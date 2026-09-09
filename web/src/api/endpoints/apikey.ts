@@ -93,6 +93,27 @@ export function useAPIKeySelfReset() {
 }
 
 /**
+ * 密钥登录模式下更新当前密钥的内置路由模型绑定（仅 model_pro / model_flash / model_vision）
+ *
+ * @example
+ * const updateOwn = useAPIKeySelfUpdate();
+ *
+ * updateOwn.mutate({ model_pro: 'gpt-group' });
+ */
+export function useAPIKeySelfUpdate() {
+    const queryClient = useQueryClient();
+
+    return useMutation({
+        mutationFn: async (patch: { model_pro?: string; model_flash?: string; model_vision?: string }) => {
+            return apiClient.post<APIKey>('/api/v1/apikey/me/update', patch);
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['apikey', 'dashboard', 'stats'] });
+        },
+    });
+}
+
+/**
  * 创建 API Key 请求
  */
 export type CreateAPIKeyRequest = Omit<APIKey, 'id' | 'api_key'> & { enabled?: boolean };
